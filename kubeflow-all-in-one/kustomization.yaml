@@ -247,16 +247,26 @@ patches:
       value:
         argocd.argoproj.io/sync-wave: "7"
 
-# Wave 8: Webhooks (after deployments)
+# Wave 7.5: HorizontalPodAutoscalers (after deployments are created)
 - target:
-    group: admissionregistration.k8s.io
+    group: autoscaling
+    kind: HorizontalPodAutoscaler
   patch: |-
     - op: add
       path: /metadata/annotations
       value:
         argocd.argoproj.io/sync-wave: "8"
 
-# Wave 9: Custom Resources (after controllers)
+# Wave 9: Webhooks (after deployments and HPAs)
+- target:
+    group: admissionregistration.k8s.io
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "9"
+
+# Wave 10: Custom Resources (after controllers and webhooks)
 - target:
     group: kubeflow.org
     kind: Profile
@@ -264,9 +274,9 @@ patches:
     - op: add
       path: /metadata/annotations
       value:
-        argocd.argoproj.io/sync-wave: "9"
+        argocd.argoproj.io/sync-wave: "10"
 
-# Wave 9: KServe ClusterServingRuntime (after KServe CRDs and controller)
+# Wave 10: KServe ClusterServingRuntime (after KServe CRDs and controller)
 - target:
     group: serving.kserve.io
     kind: ClusterServingRuntime
@@ -274,9 +284,9 @@ patches:
     - op: add
       path: /metadata/annotations
       value:
-        argocd.argoproj.io/sync-wave: "9"
+        argocd.argoproj.io/sync-wave: "10"
 
-# Wave 9: KServe ClusterStorageContainer (after KServe CRDs)
+# Wave 10: KServe ClusterStorageContainer (after KServe CRDs)
 - target:
     group: serving.kserve.io
     kind: ClusterStorageContainer
@@ -284,9 +294,9 @@ patches:
     - op: add
       path: /metadata/annotations
       value:
-        argocd.argoproj.io/sync-wave: "9"
+        argocd.argoproj.io/sync-wave: "10"
 
-# Wave 9: Trainer ClusterTrainingRuntime (after Trainer CRDs and controller)
+# Wave 10: Trainer ClusterTrainingRuntime (after Trainer CRDs and controller)
 - target:
     group: trainer.kubeflow.org
     kind: ClusterTrainingRuntime
@@ -294,9 +304,9 @@ patches:
     - op: add
       path: /metadata/annotations
       value:
-        argocd.argoproj.io/sync-wave: "9"
+        argocd.argoproj.io/sync-wave: "10"
 
-# Wave 9: Knative Certificate (after Knative CRDs)
+# Wave 10: Knative Certificate (after Knative CRDs)
 - target:
     group: networking.internal.knative.dev
     kind: Certificate
@@ -304,9 +314,9 @@ patches:
     - op: add
       path: /metadata/annotations
       value:
-        argocd.argoproj.io/sync-wave: "9"
+        argocd.argoproj.io/sync-wave: "10"
 
-# Wave 9: Knative Image (after Knative CRDs)
+# Wave 10: Knative Image (after Knative CRDs)
 - target:
     group: caching.internal.knative.dev
     kind: Image
@@ -314,7 +324,7 @@ patches:
     - op: add
       path: /metadata/annotations
       value:
-        argocd.argoproj.io/sync-wave: "9"
+        argocd.argoproj.io/sync-wave: "10"
 
 # Uncomment to add patches for custom domain, user, etc.
 # - target:
