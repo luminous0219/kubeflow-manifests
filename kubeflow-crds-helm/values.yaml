@@ -1,0 +1,5 @@
+# Helm values for kubeflow-large-crds chart
+# This chart installs large CRDs that exceed ArgoCD annotation limits
+
+# No configurable values needed - CRDs are static
+

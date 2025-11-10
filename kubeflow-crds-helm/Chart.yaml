@@ -1,0 +1,12 @@
+apiVersion: v2
+name: kubeflow-large-crds
+description: Helm chart for large Kubeflow CRDs that exceed ArgoCD annotation limits
+type: application
+version: 1.0.0
+appVersion: "1.0"
+keywords:
+  - kubeflow
+  - crds
+  - trainer
+  - spark
+

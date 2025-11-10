@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubeflow-crds
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/luminous0219/kubeflow-manifests.git
+    targetRevision: HEAD
+    path: kubeflow-crds-helm
+    # Helm-specific configuration
+    helm:
+      # Skip CRD installation via Helm (we want them in crds/ folder)
+      skipCrds: false
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  
+  syncPolicy:
+    automated:
+      prune: false  # Don't auto-delete CRDs
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      # Don't use Replace for CRDs
+      - Replace=false
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        maxDuration: 3m
+        factor: 2
+
