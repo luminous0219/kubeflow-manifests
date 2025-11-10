@@ -3,52 +3,66 @@
 ## 🎯 TL;DR - Just Deploy It!
 
 ```bash
-# 1. Deploy core Kubeflow components
+# 1. Apply the ArgoCD application
 kubectl apply -f argocd-application.yaml
-argocd app sync kubeflow
 
-# 2. Wait for core components
-watch kubectl get pods -n kubeflow
-
-# 3. (Optional) Deploy Pipelines separately
-kubectl apply -f argocd-pipelines-application.yaml
-argocd app sync kubeflow-seaweedfs
-argocd app sync kubeflow-pipelines
+# 2. Watch it deploy (ArgoCD handles everything!)
+argocd app get kubeflow --watch
 ```
 
-That's it! ArgoCD will handle retries automatically.
+That's it! **Sync waves** handle deployment order automatically.
 
-**Note:** Pipelines are deployed separately to avoid resource conflicts.
+**What happens:**
+- Wave 1: Namespaces created
+- Wave 2: CRDs and ClusterRoles (including metacontroller)
+- Wave 3-9: Everything else in order
+- No conflicts, no manual steps!
 
 ## ⚠️ Common First-Time Errors
 
-### Error 1: Resource Conflict
+### ✅ No Errors Expected!
 
+With sync waves enabled, you shouldn't see the common errors anymore:
+
+- ✅ **No resource conflicts** - Metacontroller ClusterRole created once in Wave 2
+- ✅ **No missing namespaces** - Namespaces created in Wave 1
+- ✅ **No CRD issues** - CRDs created in Wave 2 before CRs
+- ✅ **No webhook errors** - Webhooks deployed in Wave 8 after pods ready
+
+### If You Do See Errors
+
+**Error: Resource Conflict**
 ```
-Error: may not add resource with an already registered id: 
-ClusterRole.v1.rbac.authorization.k8s.io/kubeflow-metacontroller.[noNs]
+Error: may not add resource with an already registered id
 ```
 
-**Solution:** This happens when trying to deploy everything at once. Deploy Pipelines separately:
+**Cause:** Sync wave patches didn't apply correctly.
 
+**Solution:**
 ```bash
-# Deploy core components first
+# Verify sync waves are applied
+kustomize build kubeflow-all-in-one | grep -A 2 "kind: ClusterRole" | grep sync-wave
+
+# If missing, rebuild and reapply
+kubectl delete application kubeflow -n argocd
 kubectl apply -f argocd-application.yaml
-argocd app sync kubeflow
-
-# Then deploy pipelines
-kubectl apply -f argocd-pipelines-application.yaml
-argocd app sync kubeflow-pipelines
 ```
 
-### Error 2: Missing Namespace
+**Error: Sync Timeout**
 
-```
-InvalidSpecError
-Namespace for default-install-config-9h2h2b6hbk /v1, Kind=ConfigMap is missing.
-```
+**Cause:** A wave is taking too long (waiting for pods to be healthy).
 
-**Don't worry!** This is normal. Just click **Sync** in the ArgoCD UI and it will retry automatically.
+**Solution:**
+```bash
+# Check which wave is stuck
+argocd app get kubeflow
+
+# Check pod status
+kubectl get pods -n kubeflow | grep -v Running
+
+# Check events
+kubectl get events -n kubeflow --sort-by='.lastTimestamp' | tail -20
+```
 
 ### Why This Happens
 

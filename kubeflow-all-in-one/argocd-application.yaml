@@ -28,11 +28,12 @@ spec:
   
   # Sync policy
   syncPolicy:
-    # Automated sync configuration (disabled initially to allow manual review)
-    # automated:
-    #   prune: true
-    #   selfHeal: true
-    #   allowEmpty: false
+    # Automated sync configuration
+    # Sync waves handle deployment order, so auto-sync is safe
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
     
     # Sync options
     syncOptions:
@@ -46,6 +47,8 @@ spec:
       - Replace=false
       # Skip schema validation (helps with CRDs)
       - SkipDryRunOnMissingResource=true
+      # Respect sync waves
+      - ApplyOutOfSyncOnly=false
     
     # Retry configuration
     retry:

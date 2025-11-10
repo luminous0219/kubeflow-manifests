@@ -1,0 +1,273 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# This kustomization uses ArgoCD sync waves to control deployment order
+# This avoids resource conflicts while keeping everything in one application
+
+# Build metadata to help with troubleshooting
+buildMetadata: [originAnnotations]
+
+sortOptions:
+  order: legacy
+  legacySortOptions:
+    orderFirst:
+    - Namespace
+    - ResourceQuota
+    - StorageClass
+    - CustomResourceDefinition
+    - MutatingWebhookConfiguration
+    - ServiceAccount
+    - PodSecurityPolicy
+    - NetworkPolicy
+    - Role
+    - ClusterRole
+    - RoleBinding
+    - ClusterRoleBinding
+    - ConfigMap
+    - Secret
+    - Endpoints
+    - Service
+    - LimitRange
+    - PriorityClass
+    - PersistentVolume
+    - PersistentVolumeClaim
+    - Deployment
+    - StatefulSet
+    - CronJob
+    - PodDisruptionBudget
+    orderLast:
+    - ValidatingWebhookConfiguration
+
+resources:
+# Wave 1: Authentication & Infrastructure (no dependencies)
+- ../common/oauth2-proxy/overlays/m2m-dex-only
+- ../common/dex/overlays/oauth2-proxy
+- ../common/kubeflow-namespace/base
+- ../common/kubeflow-roles/base
+
+# Wave 2: Knative (needed by KServe)
+- ../common/knative/knative-serving/overlays/gateways
+- ../common/istio/cluster-local-gateway/base
+
+# Wave 3: Istio Resources & Network Policies
+- ../common/istio/kubeflow-istio-resources/base
+- ../common/networkpolicies/base
+
+# Wave 4: Core Kubeflow Components (no pipelines yet)
+- ../applications/centraldashboard/overlays/oauth2-proxy
+- ../applications/profiles/pss
+- ../applications/admission-webhook/upstream/overlays/cert-manager
+
+# Wave 5: Jupyter & Notebooks
+- ../applications/jupyter/jupyter-web-app/upstream/overlays/istio
+- ../applications/jupyter/notebook-controller/upstream/overlays/kubeflow
+
+# Wave 6: Supporting Services
+- ../applications/pvcviewer-controller/upstream/base
+- ../applications/volumes-web-app/upstream/overlays/istio
+- ../applications/tensorboard/tensorboard-controller/upstream/overlays/kubeflow
+- ../applications/tensorboard/tensorboards-web-app/upstream/overlays/istio
+
+# Wave 7: ML Components
+- ../applications/katib/upstream/installs/katib-with-kubeflow
+- ../applications/trainer/overlays
+- ../applications/kserve/kserve
+- ../applications/kserve/models-web-app/overlays/kubeflow
+- ../applications/spark/spark-operator/overlays/kubeflow
+
+# Wave 8: SeaweedFS (S3 storage for pipelines)
+- ../experimental/seaweedfs/istio
+
+# Wave 9: Kubeflow Pipelines (last, after all dependencies)
+- ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user
+
+# Wave 10: User namespace
+- ../common/user-namespace/base
+
+components:
+# Pod Security Standards
+- ../common/security/PSS/dynamic/baseline
+
+# Add sync wave annotations to control deployment order
+patches:
+# Wave 1: Namespaces and basic infrastructure
+- target:
+    kind: Namespace
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "1"
+
+- target:
+    group: rbac.authorization.k8s.io
+    kind: ClusterRole
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "1"
+
+- target:
+    group: rbac.authorization.k8s.io
+    kind: ClusterRoleBinding
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "1"
+
+# Wave 2: CRDs must be created before CRs
+- target:
+    group: apiextensions.k8s.io
+    kind: CustomResourceDefinition
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "2"
+
+# Wave 3: ServiceAccounts, Secrets, ConfigMaps
+- target:
+    kind: ServiceAccount
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "3"
+
+- target:
+    kind: Secret
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "3"
+
+- target:
+    kind: ConfigMap
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "3"
+
+# Wave 4: Services and PVCs
+- target:
+    kind: Service
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "4"
+
+- target:
+    kind: PersistentVolumeClaim
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "4"
+
+# Wave 5: Istio resources (Gateways, VirtualServices, etc.)
+- target:
+    group: networking.istio.io
+    kind: Gateway
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "5"
+
+- target:
+    group: networking.istio.io
+    kind: VirtualService
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "5"
+
+- target:
+    group: networking.istio.io
+    kind: DestinationRule
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "5"
+
+- target:
+    group: security.istio.io
+    kind: PeerAuthentication
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "5"
+
+- target:
+    group: security.istio.io
+    kind: AuthorizationPolicy
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "5"
+
+# Wave 6: StatefulSets (databases, etc.)
+- target:
+    group: apps
+    kind: StatefulSet
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "6"
+
+# Wave 7: Deployments (applications)
+- target:
+    group: apps
+    kind: Deployment
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "7"
+
+# Wave 8: Webhooks (after deployments are ready)
+- target:
+    group: admissionregistration.k8s.io
+    kind: MutatingWebhookConfiguration
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "8"
+
+- target:
+    group: admissionregistration.k8s.io
+    kind: ValidatingWebhookConfiguration
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "8"
+
+# Wave 9: Custom Resources (after CRDs and controllers are ready)
+- target:
+    group: kubeflow.org
+    kind: Profile
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "9"
+
+# Special handling for metacontroller to avoid conflicts
+# Deploy it early in wave 2 so it's available for all components
+- target:
+    kind: StatefulSet
+    name: metacontroller
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "2"
+
+- target:
+    kind: ClusterRole
+    name: kubeflow-metacontroller
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "2"
+
+- target:
+    kind: ClusterRoleBinding
+    name: meta-controller-cluster-role-binding
+  patch: |-
+    - op: add
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "2"
+

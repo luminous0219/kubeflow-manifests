@@ -67,19 +67,12 @@ resources:
 - ../common/istio/kubeflow-istio-resources/base
 
 # Kubeflow Pipelines with SeaweedFS (default S3-compatible storage)
-# NOTE: Pipelines are commented out by default to avoid resource conflicts with ArgoCD
-# To enable pipelines, uncomment ONE of the following options:
-# 
-# Option 1: SeaweedFS + Pipeline definitions in database (recommended)
-# - ../experimental/seaweedfs/istio
-# - ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user
-#
-# Option 2: SeaweedFS + Pipeline definitions as Kubernetes resources
-# - ../experimental/seaweedfs/istio
+# Pipelines are enabled by default. ArgoCD sync waves handle deployment order.
+- ../experimental/seaweedfs/istio
+- ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user
+
+# Alternative: Pipeline definitions as Kubernetes resources (uncomment to use, comment out above)
 # - ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user-k8s-native
-#
-# If you get "may not add resource with an already registered id" errors,
-# deploy pipelines as a separate ArgoCD application (see ARGOCD-TROUBLESHOOTING.md)
 
 # Katib (Hyperparameter Tuning)
 - ../applications/katib/upstream/installs/katib-with-kubeflow
@@ -131,8 +124,145 @@ components:
 # Pod Security Standards - baseline for dynamic namespaces
 - ../common/security/PSS/dynamic/baseline
 
+# ArgoCD Sync Waves - Control deployment order to avoid conflicts
+patches:
+# Wave 1: Namespaces first
+- target:
+    kind: Namespace
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "1"
+
+# Wave 2: CRDs before CRs
+- target:
+    group: apiextensions.k8s.io
+    kind: CustomResourceDefinition
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "2"
+
+# Wave 2: RBAC early (including metacontroller ClusterRole)
+- target:
+    group: rbac.authorization.k8s.io
+    kind: ClusterRole
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "2"
+
+- target:
+    group: rbac.authorization.k8s.io
+    kind: ClusterRoleBinding
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "2"
+
+# Wave 3: ServiceAccounts, Secrets, ConfigMaps
+- target:
+    kind: ServiceAccount
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "3"
+
+- target:
+    kind: Secret
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "3"
+
+- target:
+    kind: ConfigMap
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "3"
+
+# Wave 4: Services and PVCs
+- target:
+    kind: Service
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "4"
+
+- target:
+    kind: PersistentVolumeClaim
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "4"
+
+# Wave 5: Istio resources
+- target:
+    group: networking.istio.io
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "5"
+
+- target:
+    group: security.istio.io
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "5"
+
+# Wave 6: StatefulSets (databases)
+- target:
+    group: apps
+    kind: StatefulSet
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "6"
+
+# Wave 7: Deployments
+- target:
+    group: apps
+    kind: Deployment
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "7"
+
+# Wave 8: Webhooks (after deployments)
+- target:
+    group: admissionregistration.k8s.io
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "8"
+
+# Wave 9: Custom Resources (after controllers)
+- target:
+    group: kubeflow.org
+    kind: Profile
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "9"
+
 # Uncomment to add patches for custom domain, user, etc.
-# patches:
 # - target:
 #     kind: Gateway
 #     name: kubeflow-gateway
