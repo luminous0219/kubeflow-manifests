@@ -87,6 +87,55 @@ spec:
       jsonPointers:
         - /secrets
         - /imagePullSecrets
+    # Ignore large CRD annotations (these CRDs should be pre-installed via kubectl apply --server-side)
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      name: clustertrainingruntimes.trainer.kubeflow.org
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      name: trainingruntimes.trainer.kubeflow.org
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      name: trainjobs.trainer.kubeflow.org
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      name: inferenceservices.serving.kserve.io
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      name: jobsets.jobset.x-k8s.io
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      name: sparkapplications.sparkoperator.k8s.io
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      name: scheduledsparkapplications.sparkoperator.k8s.io
+      jsonPointers:
+        - /metadata/annotations
+        - /status
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      name: sparkconnects.sparkoperator.k8s.io
+      jsonPointers:
+        - /metadata/annotations
+        - /status
 
 ---
 # Optional: Application for pipelines with database storage
