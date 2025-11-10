@@ -1,0 +1,101 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubeflow
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/luminous0219/kubeflow-manifests.git
+    targetRevision: HEAD
+    path: kubeflow-helm
+    
+    # Helm-specific configuration
+    helm:
+      # Values file (optional - uses values.yaml by default)
+      # valueFiles:
+      #   - values.yaml
+      
+      # Override values
+      values: |
+        global:
+          domain: "kubeflow.example.com"
+          storageClass: "longhorn"
+          istio:
+            gateway:
+              namespace: "istio-system"
+              selector:
+                istio: ingressgateway
+          certManager:
+            issuer: "letsencrypt-prod"
+        
+        argocd:
+          enabled: true
+        
+        # Enable/disable components as needed
+        centralDashboard:
+          enabled: true
+        profiles:
+          enabled: true
+        jupyter:
+          enabled: true
+        katib:
+          enabled: true
+        kserve:
+          enabled: true
+        trainer:
+          enabled: true
+        tensorboard:
+          enabled: true
+        volumesWebApp:
+          enabled: true
+        pvcViewerController:
+          enabled: true
+        sparkOperator:
+          enabled: true
+        
+        # Disable pipelines by default (complex setup)
+        pipelines:
+          enabled: false
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubeflow
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    
+    syncOptions:
+      - CreateNamespace=true
+      # Helm handles large resources better
+      - Replace=false
+    
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        maxDuration: 5m
+        factor: 2
+  
+  # Ignore differences (Helm manages these)
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+    - group: ""
+      kind: ServiceAccount
+      jsonPointers:
+        - /secrets
+        - /imagePullSecrets
+

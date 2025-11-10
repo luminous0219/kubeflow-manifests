@@ -1,0 +1,27 @@
+apiVersion: v2
+name: kubeflow
+description: Complete Kubeflow deployment for Kubernetes with Istio, cert-manager, and Longhorn
+type: application
+version: 1.10.0
+appVersion: "1.10.0"
+home: https://www.kubeflow.org
+sources:
+  - https://github.com/kubeflow/manifests
+  - https://github.com/luminous0219/kubeflow-manifests
+keywords:
+  - kubeflow
+  - machine-learning
+  - ml
+  - ai
+  - mlops
+  - pipelines
+  - jupyter
+  - katib
+  - kserve
+  - training
+maintainers:
+  - name: Kubeflow Community
+    email: kubeflow-discuss@googlegroups.com
+icon: https://www.kubeflow.org/images/logo.svg
+dependencies: []
+

@@ -1,0 +1,342 @@
+# Kubeflow Helm Chart Values
+# Complete configuration for Kubeflow deployment
+
+# Global settings
+global:
+  # Domain for Kubeflow (change to your domain)
+  domain: "kubeflow.example.com"
+  
+  # Storage class (Longhorn)
+  storageClass: "longhorn"
+  
+  # Istio configuration
+  istio:
+    enabled: true
+    gateway:
+      # Namespace where Istio gateway is deployed
+      namespace: "istio-system"
+      # Gateway selector labels
+      selector:
+        istio: ingressgateway
+      # Create a new gateway or use existing
+      create: true
+      name: "kubeflow-gateway"
+  
+  # Cert-manager configuration
+  certManager:
+    enabled: true
+    # ClusterIssuer to use
+    issuer: "letsencrypt-prod"
+    # TLS secret name
+    tlsSecretName: "kubeflow-tls-cert"
+
+# Namespace configuration
+namespace:
+  create: true
+  name: "kubeflow"
+  labels:
+    istio-injection: enabled
+    katib.kubeflow.org/metrics-collector-injection: enabled
+
+# ArgoCD sync waves (for deployment ordering)
+argocd:
+  enabled: true
+  syncWaves:
+    namespace: "1"
+    crds: "2"
+    rbac: "2"
+    config: "3"
+    services: "4"
+    istio: "5"
+    statefulsets: "6"
+    deployments: "7"
+    hpa: "8"
+    webhooks: "9"
+    customResources: "10"
+
+# Authentication (Dex + OAuth2-Proxy)
+auth:
+  enabled: true
+  dex:
+    enabled: true
+    # Default user
+    staticPasswords:
+      - email: "user@example.com"
+        # Password: 12341234 (bcrypt hash)
+        hash: "$2y$12$4K/VkmDd1q1Orb3xAt82zu8gk7Ad6ReFR4LCP9UeYE90NLiN9Df72"
+        username: "user"
+  
+  oauth2Proxy:
+    enabled: true
+    # m2m-dex-only, m2m-dex-and-kind, or m2m-dex-and-eks
+    mode: "m2m-dex-only"
+
+# Knative Serving (required for KServe)
+knative:
+  enabled: true
+  serving:
+    enabled: true
+  eventing:
+    enabled: false
+
+# Network policies
+networkPolicies:
+  enabled: true
+
+# Kubeflow Components
+
+# Central Dashboard
+centralDashboard:
+  enabled: true
+  image:
+    repository: docker.io/kubeflownotebookswg/centraldashboard
+    tag: v1.10.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Profiles and KFAM
+profiles:
+  enabled: true
+  podSecurityStandards: true
+  image:
+    repository: docker.io/kubeflownotebookswg/profile-controller
+    tag: v1.10.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Admission Webhook (PodDefaults)
+admissionWebhook:
+  enabled: true
+  image:
+    repository: docker.io/kubeflownotebookswg/poddefaults-webhook
+    tag: v1.10.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# Jupyter Notebooks
+jupyter:
+  enabled: true
+  notebookController:
+    enabled: true
+    image:
+      repository: docker.io/kubeflownotebookswg/notebook-controller
+      tag: v1.10.0
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  
+  jupyterWebApp:
+    enabled: true
+    image:
+      repository: docker.io/kubeflownotebookswg/jupyter-web-app
+      tag: v1.10.0
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# Kubeflow Pipelines
+pipelines:
+  enabled: false  # Set to false by default due to complexity
+  storageBackend: "seaweedfs"  # or "minio"
+  definitionsStorage: "database"  # or "k8s-native"
+
+# Katib (Hyperparameter Tuning)
+katib:
+  enabled: true
+  storageSize: "10Gi"
+  controller:
+    image:
+      repository: docker.io/kubeflowkatib/katib-controller
+      tag: v0.18.0
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+  
+  ui:
+    image:
+      repository: docker.io/kubeflowkatib/katib-ui
+      tag: v0.18.0
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  
+  dbManager:
+    image:
+      repository: docker.io/kubeflowkatib/katib-db-manager
+      tag: v0.18.0
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+# KServe (Model Serving)
+kserve:
+  enabled: true
+  version: "v0.15.0"
+  controller:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+  
+  modelsWebApp:
+    enabled: true
+    image:
+      repository: kserve/models-web-app
+      tag: v0.15.0
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# Training Operator (Trainer v2)
+trainer:
+  enabled: true
+  image:
+    repository: kubeflow/training-operator
+    tag: v1.9.2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+# Volumes Web App
+volumesWebApp:
+  enabled: true
+  image:
+    repository: docker.io/kubeflownotebookswg/volumes-web-app
+    tag: v1.10.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Tensorboard
+tensorboard:
+  enabled: true
+  controller:
+    enabled: true
+    image:
+      repository: docker.io/kubeflownotebookswg/tensorboard-controller
+      tag: v1.10.0
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  
+  webApp:
+    enabled: true
+    image:
+      repository: docker.io/kubeflownotebookswg/tensorboards-web-app
+      tag: v1.10.0
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# PVC Viewer Controller
+pvcViewerController:
+  enabled: true
+  image:
+    repository: docker.io/kubeflownotebookswg/pvcviewer-controller
+    tag: v1.10.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Spark Operator
+sparkOperator:
+  enabled: true
+  image:
+    repository: ghcr.io/kubeflow/spark-operator
+    tag: v2.3.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Model Registry
+modelRegistry:
+  enabled: false
+  storageSize: "20Gi"
+
+# User namespace
+userNamespace:
+  create: true
+  name: "kubeflow-user-example-com"
+  owner: "user@example.com"
+
+# Node selector for all components
+nodeSelector: {}
+
+# Tolerations for all components
+tolerations: []
+
+# Affinity for all components
+affinity: {}
+
+# Common labels for all resources
+commonLabels: {}
+
+# Common annotations for all resources
+commonAnnotations: {}
+
