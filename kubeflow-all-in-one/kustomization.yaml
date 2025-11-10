@@ -67,11 +67,14 @@ resources:
 - ../common/istio/kubeflow-istio-resources/base
 
 # Kubeflow Pipelines with SeaweedFS (default S3-compatible storage)
-# Pipelines are enabled by default. ArgoCD sync waves handle deployment order.
-- ../experimental/seaweedfs/istio
-- ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user
-
-# Alternative: Pipeline definitions as Kubernetes resources (uncomment to use, comment out above)
+# NOTE: Pipelines commented out due to metacontroller ClusterRole conflict
+# Deploy pipelines as a separate ArgoCD application using argocd-pipelines-application.yaml
+# See DEPLOYMENT-STRATEGY.md for details
+#
+# - ../experimental/seaweedfs/istio
+# - ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user
+#
+# Alternative: Pipeline definitions as Kubernetes resources
 # - ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user-k8s-native
 
 # Katib (Hyperparameter Tuning)

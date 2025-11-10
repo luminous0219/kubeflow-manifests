@@ -3,20 +3,26 @@
 ## 🎯 TL;DR - Just Deploy It!
 
 ```bash
-# 1. Apply the ArgoCD application
+# 1. Deploy core Kubeflow (without pipelines)
 kubectl apply -f argocd-application.yaml
 
-# 2. Watch it deploy (ArgoCD handles everything!)
+# 2. Watch it deploy
 argocd app get kubeflow --watch
+
+# 3. (Optional) Add Pipelines separately
+kubectl apply -f argocd-pipelines-application.yaml
+argocd app sync kubeflow-pipelines
 ```
 
-That's it! **Sync waves** handle deployment order automatically.
+**Why separate apps?**
+- Kustomize build conflict with metacontroller ClusterRole
+- Sync waves help with deployment order, not build conflicts
+- See [SYNC-WAVES-EXPLAINED.md](SYNC-WAVES-EXPLAINED.md) for details
 
-**What happens:**
-- Wave 1: Namespaces created
-- Wave 2: CRDs and ClusterRoles (including metacontroller)
-- Wave 3-9: Everything else in order
-- No conflicts, no manual steps!
+**What you get:**
+- Core Kubeflow with sync waves (proper ordering)
+- Pipelines as separate app (no conflicts)
+- Best of both worlds!
 
 ## ⚠️ Common First-Time Errors
 
