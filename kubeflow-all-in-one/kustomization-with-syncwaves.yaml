@@ -5,7 +5,8 @@ kind: Kustomization
 # This avoids resource conflicts while keeping everything in one application
 
 # Build metadata to help with troubleshooting
-buildMetadata: [originAnnotations]
+# Note: originAnnotations removed to avoid CRD annotation size limit issues
+# buildMetadata: [originAnnotations]
 
 sortOptions:
   order: legacy

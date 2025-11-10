@@ -5,7 +5,8 @@ kind: Kustomization
 # It assumes cert-manager, Istio, and Longhorn are already installed
 
 # Build metadata to help with troubleshooting
-buildMetadata: [originAnnotations]
+# Note: originAnnotations removed to avoid CRD annotation size limit issues
+# buildMetadata: [originAnnotations]
 
 sortOptions:
   order: legacy
@@ -259,6 +260,56 @@ patches:
 - target:
     group: kubeflow.org
     kind: Profile
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "9"
+
+# Wave 9: KServe ClusterServingRuntime (after KServe CRDs and controller)
+- target:
+    group: serving.kserve.io
+    kind: ClusterServingRuntime
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "9"
+
+# Wave 9: KServe ClusterStorageContainer (after KServe CRDs)
+- target:
+    group: serving.kserve.io
+    kind: ClusterStorageContainer
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "9"
+
+# Wave 9: Trainer ClusterTrainingRuntime (after Trainer CRDs and controller)
+- target:
+    group: trainer.kubeflow.org
+    kind: ClusterTrainingRuntime
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "9"
+
+# Wave 9: Knative Certificate (after Knative CRDs)
+- target:
+    group: networking.internal.knative.dev
+    kind: Certificate
+  patch: |-
+    - op: add
+      path: /metadata/annotations
+      value:
+        argocd.argoproj.io/sync-wave: "9"
+
+# Wave 9: Knative Image (after Knative CRDs)
+- target:
+    group: caching.internal.knative.dev
+    kind: Image
   patch: |-
     - op: add
       path: /metadata/annotations

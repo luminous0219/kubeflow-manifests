@@ -47,8 +47,10 @@ spec:
       - Replace=false
       # Skip schema validation (helps with CRDs)
       - SkipDryRunOnMissingResource=true
-      # Respect sync waves
+      # Respect sync waves - critical for CRD ordering
       - ApplyOutOfSyncOnly=false
+      # Fail on shared resource - prevents conflicts
+      - FailOnSharedResource=false
     
     # Retry configuration
     retry:
