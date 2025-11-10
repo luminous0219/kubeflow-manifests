@@ -1,0 +1,118 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubeflow-pipelines
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/kubeflow/manifests.git
+    targetRevision: master
+    # Path to pipelines with database storage
+    path: applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubeflow
+  
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+      - SkipDryRunOnMissingResource=true
+    
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        maxDuration: 5m
+        factor: 2
+  
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+    - group: ""
+      kind: ServiceAccount
+      jsonPointers:
+        - /secrets
+        - /imagePullSecrets
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubeflow-seaweedfs
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/kubeflow/manifests.git
+    targetRevision: master
+    path: experimental/seaweedfs/istio
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubeflow
+  
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+    
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        maxDuration: 3m
+        factor: 2
+
+---
+# Alternative: Pipelines with Kubernetes native storage
+# Uncomment this and comment out the database version above if you prefer K8s native storage
+# apiVersion: argoproj.io/v1alpha1
+# kind: Application
+# metadata:
+#   name: kubeflow-pipelines
+#   namespace: argocd
+#   finalizers:
+#     - resources-finalizer.argocd.argoproj.io
+# spec:
+#   project: default
+#   
+#   source:
+#     repoURL: https://github.com/kubeflow/manifests.git
+#     targetRevision: master
+#     path: applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user-k8s-native
+#   
+#   destination:
+#     server: https://kubernetes.default.svc
+#     namespace: kubeflow
+#   
+#   syncPolicy:
+#     syncOptions:
+#       - CreateNamespace=true
+#       - ServerSideApply=true
+#       - RespectIgnoreDifferences=true
+#       - SkipDryRunOnMissingResource=true
+#     
+#     retry:
+#       limit: 10
+#       backoff:
+#         duration: 10s
+#         maxDuration: 5m
+#         factor: 2
+

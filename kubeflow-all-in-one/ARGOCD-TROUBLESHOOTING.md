@@ -4,6 +4,69 @@ This guide helps you troubleshoot common ArgoCD issues when deploying Kubeflow.
 
 ## 🔍 Common Errors and Solutions
 
+### Error: "may not add resource with an already registered id"
+
+**Full Error:**
+```
+Error: accumulating resources: may not add resource with an already registered id: 
+ClusterRole.v1.rbac.authorization.k8s.io/kubeflow-metacontroller.[noNs]
+```
+
+**Cause:** Multiple Kubeflow components (like Pipelines and Profiles) try to create the same ClusterRole, causing a conflict when combined in a single kustomization.
+
+**Solutions:**
+
+#### Solution 1: Deploy Pipelines Separately (Recommended)
+
+Deploy the core Kubeflow components first, then add Pipelines as a separate ArgoCD application:
+
+```bash
+# Step 1: Deploy core Kubeflow (without pipelines)
+kubectl apply -f argocd-application.yaml
+argocd app sync kubeflow
+
+# Step 2: Wait for core components to be ready
+kubectl wait --for=condition=Ready pods --all -n kubeflow --timeout=600s
+
+# Step 3: Deploy Pipelines separately
+kubectl apply -f argocd-pipelines-application.yaml
+argocd app sync kubeflow-seaweedfs
+argocd app sync kubeflow-pipelines
+```
+
+This approach avoids the resource conflict by deploying components in separate applications.
+
+#### Solution 2: Enable Pipelines in Kustomization (Advanced)
+
+If you want everything in one application, uncomment pipelines in `kustomization.yaml`:
+
+```yaml
+# In kubeflow-all-in-one/kustomization.yaml
+resources:
+  # ... other resources ...
+  
+  # Uncomment these:
+  - ../experimental/seaweedfs/istio
+  - ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user
+```
+
+Then apply with force:
+
+```bash
+argocd app sync kubeflow --force
+```
+
+**Note:** This may still cause conflicts. The separate application approach (Solution 1) is more reliable.
+
+#### Solution 3: Use Different Pipeline Variant
+
+Try the Kubernetes-native pipeline storage which has fewer dependencies:
+
+```bash
+# Edit argocd-pipelines-application.yaml to use:
+path: applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user-k8s-native
+```
+
 ### Error: "Namespace for ... ConfigMap is missing"
 
 **Full Error:**

@@ -4,6 +4,9 @@ kind: Kustomization
 # This kustomization file deploys all Kubeflow components
 # It assumes cert-manager, Istio, and Longhorn are already installed
 
+# Build metadata to help with troubleshooting
+buildMetadata: [originAnnotations]
+
 sortOptions:
   order: legacy
   legacySortOptions:
@@ -64,12 +67,19 @@ resources:
 - ../common/istio/kubeflow-istio-resources/base
 
 # Kubeflow Pipelines with SeaweedFS (default S3-compatible storage)
-- ../experimental/seaweedfs/istio
-# Choose ONE pipeline storage mode:
-# Option 1: Pipeline definitions in database (default)
-- ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user
-# Option 2: Pipeline definitions as Kubernetes resources (uncomment to use, comment out option 1)
+# NOTE: Pipelines are commented out by default to avoid resource conflicts with ArgoCD
+# To enable pipelines, uncomment ONE of the following options:
+# 
+# Option 1: SeaweedFS + Pipeline definitions in database (recommended)
+# - ../experimental/seaweedfs/istio
+# - ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user
+#
+# Option 2: SeaweedFS + Pipeline definitions as Kubernetes resources
+# - ../experimental/seaweedfs/istio
 # - ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user-k8s-native
+#
+# If you get "may not add resource with an already registered id" errors,
+# deploy pipelines as a separate ArgoCD application (see ARGOCD-TROUBLESHOOTING.md)
 
 # Katib (Hyperparameter Tuning)
 - ../applications/katib/upstream/installs/katib-with-kubeflow

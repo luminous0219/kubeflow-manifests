@@ -3,24 +3,45 @@
 ## 🎯 TL;DR - Just Deploy It!
 
 ```bash
-# 1. Apply the ArgoCD application
+# 1. Deploy core Kubeflow components
 kubectl apply -f argocd-application.yaml
-
-# 2. Wait a moment for ArgoCD to detect it
-sleep 5
-
-# 3. Sync the application (this will retry automatically on errors)
 argocd app sync kubeflow
 
-# 4. Watch the deployment
+# 2. Wait for core components
 watch kubectl get pods -n kubeflow
+
+# 3. (Optional) Deploy Pipelines separately
+kubectl apply -f argocd-pipelines-application.yaml
+argocd app sync kubeflow-seaweedfs
+argocd app sync kubeflow-pipelines
 ```
 
 That's it! ArgoCD will handle retries automatically.
 
-## ⚠️ Common First-Time Error
+**Note:** Pipelines are deployed separately to avoid resource conflicts.
 
-You might see this error in ArgoCD UI:
+## ⚠️ Common First-Time Errors
+
+### Error 1: Resource Conflict
+
+```
+Error: may not add resource with an already registered id: 
+ClusterRole.v1.rbac.authorization.k8s.io/kubeflow-metacontroller.[noNs]
+```
+
+**Solution:** This happens when trying to deploy everything at once. Deploy Pipelines separately:
+
+```bash
+# Deploy core components first
+kubectl apply -f argocd-application.yaml
+argocd app sync kubeflow
+
+# Then deploy pipelines
+kubectl apply -f argocd-pipelines-application.yaml
+argocd app sync kubeflow-pipelines
+```
+
+### Error 2: Missing Namespace
 
 ```
 InvalidSpecError
