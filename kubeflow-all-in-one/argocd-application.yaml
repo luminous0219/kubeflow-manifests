@@ -28,14 +28,11 @@ spec:
   
   # Sync policy
   syncPolicy:
-    # Automated sync configuration
-    automated:
-      # Automatically sync when changes are detected
-      prune: true
-      # Automatically create namespace if it doesn't exist
-      selfHeal: true
-      # Allow empty resources
-      allowEmpty: false
+    # Automated sync configuration (disabled initially to allow manual review)
+    # automated:
+    #   prune: true
+    #   selfHeal: true
+    #   allowEmpty: false
     
     # Sync options
     syncOptions:
@@ -45,18 +42,20 @@ spec:
       - ServerSideApply=true
       # Respect ignore differences
       - RespectIgnoreDifferences=true
-      # Apply out of sync only
-      - ApplyOutOfSyncOnly=false
+      # Replace resources instead of applying
+      - Replace=false
+      # Skip schema validation (helps with CRDs)
+      - SkipDryRunOnMissingResource=true
     
     # Retry configuration
     retry:
       # Number of retry attempts
-      limit: 5
+      limit: 10
       backoff:
         # Initial retry delay
-        duration: 5s
+        duration: 10s
         # Maximum retry delay
-        maxDuration: 3m
+        maxDuration: 5m
         # Backoff factor
         factor: 2
   

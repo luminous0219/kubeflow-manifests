@@ -67,8 +67,8 @@ resources:
 - ../experimental/seaweedfs/istio
 # Choose ONE pipeline storage mode:
 # Option 1: Pipeline definitions in database (default)
-# - ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user
-# Option 2: Pipeline definitions as Kubernetes resources
+- ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user
+# Option 2: Pipeline definitions as Kubernetes resources (uncomment to use, comment out option 1)
 # - ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user-k8s-native
 
 # Katib (Hyperparameter Tuning)
