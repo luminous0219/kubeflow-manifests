@@ -135,9 +135,8 @@ patches:
     kind: Namespace
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "1"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "1"
 
 # Wave 2: CRDs before CRs
 - target:
@@ -145,9 +144,8 @@ patches:
     kind: CustomResourceDefinition
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "2"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "2"
 
 # Wave 2: RBAC early (including metacontroller ClusterRole)
 - target:
@@ -155,77 +153,68 @@ patches:
     kind: ClusterRole
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "2"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "2"
 
 - target:
     group: rbac.authorization.k8s.io
     kind: ClusterRoleBinding
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "2"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "2"
 
 # Wave 3: ServiceAccounts, Secrets, ConfigMaps
 - target:
     kind: ServiceAccount
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "3"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "3"
 
 - target:
     kind: Secret
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "3"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "3"
 
 - target:
     kind: ConfigMap
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "3"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "3"
 
 # Wave 4: Services and PVCs
 - target:
     kind: Service
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "4"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "4"
 
 - target:
     kind: PersistentVolumeClaim
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "4"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "4"
 
 # Wave 5: Istio resources
 - target:
     group: networking.istio.io
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "5"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "5"
 
 - target:
     group: security.istio.io
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "5"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "5"
 
 # Wave 6: StatefulSets (databases)
 - target:
@@ -233,9 +222,8 @@ patches:
     kind: StatefulSet
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "6"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "6"
 
 # Wave 7: Deployments
 - target:
@@ -243,9 +231,8 @@ patches:
     kind: Deployment
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "7"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "7"
 
 # Wave 7.5: HorizontalPodAutoscalers (after deployments are created)
 - target:
@@ -253,18 +240,16 @@ patches:
     kind: HorizontalPodAutoscaler
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "8"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "8"
 
 # Wave 9: Webhooks (after deployments and HPAs)
 - target:
     group: admissionregistration.k8s.io
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "9"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "9"
 
 # Wave 10: Custom Resources (after controllers and webhooks)
 - target:
@@ -272,9 +257,8 @@ patches:
     kind: Profile
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "10"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "10"
 
 # Wave 10: KServe ClusterServingRuntime (after KServe CRDs and controller)
 - target:
@@ -282,9 +266,8 @@ patches:
     kind: ClusterServingRuntime
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "10"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "10"
 
 # Wave 10: KServe ClusterStorageContainer (after KServe CRDs)
 - target:
@@ -292,9 +275,8 @@ patches:
     kind: ClusterStorageContainer
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "10"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "10"
 
 # Wave 10: Trainer ClusterTrainingRuntime (after Trainer CRDs and controller)
 - target:
@@ -302,9 +284,8 @@ patches:
     kind: ClusterTrainingRuntime
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "10"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "10"
 
 # Wave 10: Knative Certificate (after Knative CRDs)
 - target:
@@ -312,9 +293,8 @@ patches:
     kind: Certificate
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "10"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "10"
 
 # Wave 10: Knative Image (after Knative CRDs)
 - target:
@@ -322,9 +302,8 @@ patches:
     kind: Image
   patch: |-
     - op: add
-      path: /metadata/annotations
-      value:
-        argocd.argoproj.io/sync-wave: "10"
+      path: /metadata/annotations/argocd.argoproj.io~1sync-wave
+      value: "10"
 
 # Uncomment to add patches for custom domain, user, etc.
 # - target:
