@@ -1,0 +1,153 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubeflow
+  namespace: argocd
+  # Add finalizer to ensure proper cleanup
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  # The project the application belongs to
+  project: default
+  
+  # Source repository configuration
+  source:
+    # Git repository URL - CHANGE THIS to your repository
+    repoURL: https://github.com/kubeflow/manifests.git
+    # Target revision (branch, tag, or commit)
+    targetRevision: master
+    # Path to the kustomization directory
+    path: kubeflow-all-in-one
+  
+  # Destination cluster and namespace
+  destination:
+    # Target cluster (in-cluster by default)
+    server: https://kubernetes.default.svc
+    # Target namespace (will be created if it doesn't exist)
+    namespace: kubeflow
+  
+  # Sync policy
+  syncPolicy:
+    # Automated sync configuration
+    automated:
+      # Automatically sync when changes are detected
+      prune: true
+      # Automatically create namespace if it doesn't exist
+      selfHeal: true
+      # Allow empty resources
+      allowEmpty: false
+    
+    # Sync options
+    syncOptions:
+      # Create namespace if it doesn't exist
+      - CreateNamespace=true
+      # Use server-side apply for better conflict resolution
+      - ServerSideApply=true
+      # Respect ignore differences
+      - RespectIgnoreDifferences=true
+      # Apply out of sync only
+      - ApplyOutOfSyncOnly=false
+    
+    # Retry configuration
+    retry:
+      # Number of retry attempts
+      limit: 5
+      backoff:
+        # Initial retry delay
+        duration: 5s
+        # Maximum retry delay
+        maxDuration: 3m
+        # Backoff factor
+        factor: 2
+  
+  # Ignore differences in certain fields
+  ignoreDifferences:
+    # Ignore webhook configurations that may be modified by cert-manager
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+        - /webhooks/0/failurePolicy
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+        - /webhooks/0/failurePolicy
+    # Ignore cert-manager certificate status
+    - group: cert-manager.io
+      kind: Certificate
+      jsonPointers:
+        - /status
+    # Ignore service account tokens
+    - group: ""
+      kind: ServiceAccount
+      jsonPointers:
+        - /secrets
+        - /imagePullSecrets
+
+---
+# Optional: Application for pipelines with database storage
+# Uncomment this if you want to use database storage for pipeline definitions
+# apiVersion: argoproj.io/v1alpha1
+# kind: Application
+# metadata:
+#   name: kubeflow-pipelines-db
+#   namespace: argocd
+#   finalizers:
+#     - resources-finalizer.argocd.argoproj.io
+# spec:
+#   project: default
+#   source:
+#     repoURL: https://github.com/kubeflow/manifests.git
+#     targetRevision: master
+#     path: applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user
+#   destination:
+#     server: https://kubernetes.default.svc
+#     namespace: kubeflow
+#   syncPolicy:
+#     automated:
+#       prune: true
+#       selfHeal: true
+#     syncOptions:
+#       - CreateNamespace=true
+#       - ServerSideApply=true
+#     retry:
+#       limit: 5
+#       backoff:
+#         duration: 5s
+#         maxDuration: 3m
+#         factor: 2
+
+---
+# Optional: Application for pipelines with Kubernetes native storage
+# Uncomment this if you want to use Kubernetes resources for pipeline definitions
+# apiVersion: argoproj.io/v1alpha1
+# kind: Application
+# metadata:
+#   name: kubeflow-pipelines-k8s
+#   namespace: argocd
+#   finalizers:
+#     - resources-finalizer.argocd.argoproj.io
+# spec:
+#   project: default
+#   source:
+#     repoURL: https://github.com/kubeflow/manifests.git
+#     targetRevision: master
+#     path: applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user-k8s-native
+#   destination:
+#     server: https://kubernetes.default.svc
+#     namespace: kubeflow
+#   syncPolicy:
+#     automated:
+#       prune: true
+#       selfHeal: true
+#     syncOptions:
+#       - CreateNamespace=true
+#       - ServerSideApply=true
+#     retry:
+#       limit: 5
+#       backoff:
+#         duration: 5s
+#         maxDuration: 3m
+#         factor: 2
+

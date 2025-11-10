@@ -1,0 +1,23 @@
+{{- if .Values.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "template.fullname" . }}
+  namespace: {{ include "template.namespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+  labels:
+    {{- include "template.labels" . | nindent 4 }}
+    app.kubernetes.io/component: servicemonitor
+    {{- with .Values.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "template.selectorLabels" . | nindent 6 }}
+  endpoints:
+  - port: http
+    interval: {{ .Values.serviceMonitor.interval | default "30s" }}
+    path: {{ .Values.serviceMonitor.path | default "/metrics" }}
+{{- end }} 

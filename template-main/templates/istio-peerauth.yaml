@@ -1,0 +1,18 @@
+{{- if and .Values.istio.enabled .Values.istio.peerAuth.enabled }}
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: {{ include "template.fullname" . }}-peerauth
+  namespace: {{ include "template.namespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    {{- include "template.labels" . | nindent 4 }}
+    app.kubernetes.io/component: peerauth
+spec:
+  selector:
+    matchLabels:
+      {{- include "template.selectorLabels" . | nindent 6 }}
+  mtls:
+    mode: {{ .Values.istio.peerAuth.mode | default "STRICT" }}
+{{- end }} 

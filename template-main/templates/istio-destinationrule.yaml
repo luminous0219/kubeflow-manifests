@@ -1,0 +1,17 @@
+{{- if and .Values.istio.enabled .Values.istio.destinationRule.enabled }}
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: {{ include "template.destinationRuleName" . }}
+  namespace: {{ include "template.namespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    {{- include "template.labels" . | nindent 4 }}
+    app.kubernetes.io/component: destinationrule
+spec:
+  host: {{ include "template.fullname" . }}
+  trafficPolicy:
+    tls:
+      mode: {{ .Values.istio.destinationRule.tlsMode | default "ISTIO_MUTUAL" }}
+{{- end }} 

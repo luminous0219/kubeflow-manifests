@@ -1,0 +1,440 @@
+# Kubeflow All-in-One Helm Chart Values
+# This chart deploys Kubeflow components assuming cert-manager, Istio, and Longhorn are already installed
+
+# Global configuration
+global:
+  # Kubeflow domain - CHANGE THIS to your domain
+  domain: "kubeflow.example.com"
+  # Storage class for persistent volumes (Longhorn)
+  storageClass: "longhorn"
+  # Istio gateway namespace
+  istioGatewayNamespace: "istio-system"
+  # Istio gateway name (use existing gateway or create new one)
+  istioGatewayName: "kubeflow-gateway"
+  # Create a new Istio gateway (set to false if using existing gateway)
+  createIstioGateway: true
+  # Cert-manager cluster issuer name (must exist)
+  certManagerIssuer: "letsencrypt-prod"
+  # TLS certificate secret name
+  tlsSecretName: "kubeflow-tls-cert"
+
+# Namespace configuration
+namespace:
+  # Create kubeflow namespace
+  create: true
+  name: "kubeflow"
+  # Namespace labels
+  labels:
+    istio-injection: enabled
+    katib.kubeflow.org/metrics-collector-injection: enabled
+
+# Authentication configuration
+auth:
+  # Enable authentication (Dex + OAuth2-Proxy)
+  enabled: true
+  # Default user credentials (CHANGE THESE IN PRODUCTION!)
+  defaultUser:
+    email: "user@example.com"
+    username: "user"
+    # Password hash (bcrypt) - default password is "12341234"
+    # Generate new hash: python3 -c 'from passlib.hash import bcrypt; import getpass; print(bcrypt.using(rounds=12, ident="2y").hash(getpass.getpass()))'
+    passwordHash: "$2y$12$4K/VkmDd1q1Orb3xAt82zu8gk7Ad6ReFR4LCP9UeYE90NLiN9Df72"
+  
+  # OAuth2 Proxy configuration
+  oauth2Proxy:
+    enabled: true
+    # Machine-to-machine authentication options
+    # m2m-dex-only: Works on most clusters, does NOT allow K8s service account tokens from outside
+    # m2m-dex-and-kind: Works on Kind, K3D, Rancher, GKE (allows K8s service account tokens)
+    # m2m-dex-and-eks: Works on EKS (requires AWS region and cluster ID configuration)
+    m2mMode: "m2m-dex-only"
+    
+    # For EKS, configure these:
+    # awsRegion: "us-west-2"
+    # clusterName: "my-eks-cluster"
+  
+  # Dex configuration
+  dex:
+    enabled: true
+    # Add additional identity providers (OIDC, LDAP, GitHub, Google, etc.)
+    # See: https://dexidp.io/docs/connectors/
+    connectors: []
+    # Example Azure AD connector:
+    # - type: oidc
+    #   id: azure
+    #   name: Azure AD
+    #   config:
+    #     issuer: https://login.microsoftonline.com/TENANT_ID/v2.0
+    #     clientID: CLIENT_ID
+    #     clientSecret: CLIENT_SECRET
+    #     redirectURI: https://kubeflow.example.com/dex/callback
+
+# Knative configuration (required for KServe)
+knative:
+  enabled: true
+  serving:
+    enabled: true
+  eventing:
+    enabled: false
+
+# Network policies
+networkPolicies:
+  enabled: true
+
+# Kubeflow Components Configuration
+
+# Central Dashboard
+centralDashboard:
+  enabled: true
+  image:
+    repository: docker.io/kubeflownotebookswg/centraldashboard
+    tag: v1.10.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Profiles and KFAM (Kubeflow Access Management)
+profiles:
+  enabled: true
+  # Enable Pod Security Standards
+  podSecurityStandards: true
+  image:
+    repository: docker.io/kubeflownotebookswg/profile-controller
+    tag: v1.10.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Admission Webhook (PodDefaults)
+admissionWebhook:
+  enabled: true
+  image:
+    repository: docker.io/kubeflownotebookswg/poddefaults-webhook
+    tag: v1.10.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# Jupyter Notebooks
+jupyter:
+  enabled: true
+  # Notebook Controller
+  notebookController:
+    enabled: true
+    image:
+      repository: docker.io/kubeflownotebookswg/notebook-controller
+      tag: v1.10.0
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  
+  # Jupyter Web App
+  jupyterWebApp:
+    enabled: true
+    image:
+      repository: docker.io/kubeflownotebookswg/jupyter-web-app
+      tag: v1.10.0
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# Kubeflow Pipelines
+pipelines:
+  enabled: true
+  # Storage backend: "seaweedfs" or "minio"
+  storageBackend: "seaweedfs"
+  # Pipeline definitions storage: "database" or "k8s-native"
+  # database: Pipeline definitions stored in MySQL database
+  # k8s-native: Pipeline definitions stored as Kubernetes custom resources
+  definitionsStorage: "database"
+  
+  # Database configuration
+  database:
+    # Use MySQL (default) or PostgreSQL
+    type: "mysql"
+    # Storage size for database
+    storageSize: "20Gi"
+  
+  # SeaweedFS configuration (S3-compatible artifact store)
+  seaweedfs:
+    enabled: true
+    storageSize: "10Gi"
+  
+  # MinIO configuration (alternative to SeaweedFS)
+  minio:
+    enabled: false
+    storageSize: "20Gi"
+  
+  # Pipeline components resources
+  resources:
+    apiServer:
+      requests:
+        cpu: 250m
+        memory: 500Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    persistenceAgent:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+    scheduledWorkflow:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+    viewerCrd:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+    ui:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+# Katib (Hyperparameter Tuning)
+katib:
+  enabled: true
+  # Database storage size
+  storageSize: "10Gi"
+  
+  # Katib components
+  controller:
+    image:
+      repository: docker.io/kubeflowkatib/katib-controller
+      tag: v0.18.0
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+  
+  ui:
+    image:
+      repository: docker.io/kubeflowkatib/katib-ui
+      tag: v0.18.0
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  
+  dbManager:
+    image:
+      repository: docker.io/kubeflowkatib/katib-db-manager
+      tag: v0.18.0
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+# KServe (Model Serving)
+kserve:
+  enabled: true
+  version: "v0.15.0"
+  
+  # KServe controller
+  controller:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+  
+  # Models Web App
+  modelsWebApp:
+    enabled: true
+    image:
+      repository: kserve/models-web-app
+      tag: v0.15.0
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# Training Operator (v2 - Trainer)
+trainer:
+  enabled: true
+  image:
+    repository: kubeflow/training-operator
+    tag: v1.9.2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+# Volumes Web App
+volumesWebApp:
+  enabled: true
+  image:
+    repository: docker.io/kubeflownotebookswg/volumes-web-app
+    tag: v1.10.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Tensorboard
+tensorboard:
+  enabled: true
+  # Tensorboard Controller
+  controller:
+    enabled: true
+    image:
+      repository: docker.io/kubeflownotebookswg/tensorboard-controller
+      tag: v1.10.0
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  
+  # Tensorboards Web App
+  webApp:
+    enabled: true
+    image:
+      repository: docker.io/kubeflownotebookswg/tensorboards-web-app
+      tag: v1.10.0
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# PVC Viewer Controller
+pvcViewerController:
+  enabled: true
+  image:
+    repository: docker.io/kubeflownotebookswg/pvcviewer-controller
+    tag: v1.10.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Spark Operator
+sparkOperator:
+  enabled: true
+  image:
+    repository: ghcr.io/kubeflow/spark-operator
+    tag: v2.3.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Model Registry (optional)
+modelRegistry:
+  enabled: false
+  storageSize: "20Gi"
+  image:
+    repository: kubeflow/model-registry
+    tag: v0.3.2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+# User namespace configuration
+userNamespace:
+  # Create default user namespace
+  create: true
+  # Default user profile name
+  name: "kubeflow-user-example-com"
+  # User email (must match auth.defaultUser.email)
+  owner: "user@example.com"
+
+# ArgoCD sync waves configuration
+argocd:
+  # Enable ArgoCD sync waves annotations
+  enabled: true
+  syncWaves:
+    namespace: "1"
+    roles: "2"
+    auth: "3"
+    knative: "4"
+    networkPolicies: "5"
+    istioResources: "6"
+    components: "7"
+    userNamespace: "8"
+
+# Node selector for all components (optional)
+nodeSelector: {}
+  # kubernetes.io/hostname: "k8s-worker-1"
+
+# Tolerations for all components (optional)
+tolerations: []
+
+# Affinity for all components (optional)
+affinity: {}
+
+# Additional labels for all resources
+commonLabels: {}
+  # environment: production
+  # team: ml-platform
+
+# Additional annotations for all resources
+commonAnnotations: {}
+

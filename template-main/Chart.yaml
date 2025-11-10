@@ -1,0 +1,18 @@
+apiVersion: v2
+name: app-template
+description: A Helm chart template for Kubernetes applications with Istio, cert-manager, and Longhorn
+type: application
+version: 0.1.0
+appVersion: "latest"
+home: https://example.com
+sources:
+  - https://github.com/example/app-template
+keywords:
+  - template
+  - istio
+  - cert-manager
+  - longhorn
+  - kubernetes
+maintainers:
+  - name: DevOps Team
+    email: devops@example.com 

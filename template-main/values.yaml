@@ -1,0 +1,316 @@
+# Template values for Kubernetes applications with Istio, cert-manager, and Longhorn
+# This template is based on ollama-k8s and openwebui-k8s projects
+
+# Application metadata
+app:
+  name: "my-app"
+  description: "My Kubernetes application"
+  chartVersion: "0.1.0"
+  version: "latest"
+  homepage: "https://example.com"
+  sourceUrl: "https://github.com/example/my-app"
+  maintainer:
+    name: "DevOps Team"
+    email: "devops@example.com"
+
+# Basic deployment configuration
+replicaCount: 1
+
+image:
+  repository: "nginx"  # Replace with your application image
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Namespace management
+namespace:
+  create: true
+  name: "my-app"
+
+# Global configuration
+global:
+  storageClass: "longhorn"
+
+# Istio configuration
+istio:
+  enabled: true
+  sidecarInjection: true
+  manualSidecar:
+    enabled: true
+    tag: "1.27.0"
+  gateway:
+    enabled: true
+    name: "my-app-gateway"
+    namespace: "istio-system"
+    hosts:
+      - "myapp.19980219.xyz"
+    httpPort: 80
+    httpsPort: 443
+  virtualService:
+    enabled: true
+    timeout: 30s
+    retries:
+      attempts: 3
+      perTryTimeout: 10s
+      retryOn: "gateway-error,connect-failure,refused-stream"
+    headers:
+      request:
+        set:
+          X-Forwarded-Proto: "https"
+      response:
+        set:
+          Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+          X-Content-Type-Options: "nosniff"
+          X-Frame-Options: "SAMEORIGIN"
+          X-XSS-Protection: "1; mode=block"
+  destinationRule:
+    enabled: true
+    tlsMode: "ISTIO_MUTUAL"
+  # Service mesh configuration
+  serviceMesh:
+    enabled: true
+    # mTLS for secure communication
+    mtls:
+      enabled: true
+      mode: STRICT
+  # JWT configuration
+  jwt:
+    enabled: false  # Disable by default, enable as needed
+    issuer: "my-app-service"
+    audiences: ["other-service"]
+    skipPaths: []
+    useLegacy: false
+  # Peer authentication
+  peerAuth:
+    enabled: true
+    mode: STRICT
+
+# Cert-manager configuration
+certManager:
+  enabled: true
+  issuer: "letsencrypt-prod"  # Use existing cluster issuer
+  secretName: "my-app-tls-cert"
+  duration: "8760h"  # 1 year
+  renewBefore: "720h"  # 30 days
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+  # Ensure automatic token mounting
+  automountServiceAccountToken: true
+
+podAnnotations:
+  # Enable Istio sidecar injection
+  sidecar.istio.io/inject: "true"
+
+podSecurityContext:
+  fsGroup: 2000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+  # Additional ports can be defined here
+  additionalPorts: []
+    # - name: metrics
+    #   port: 9090
+    #   targetPort: 9090
+
+# LoadBalancer configuration (disabled by default when using Istio)
+loadBalancer:
+  enabled: false
+  type: LoadBalancer
+  port: 80
+  loadBalancerIP: ""
+
+# Traditional ingress (disabled by default when using Istio)
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+# GPU Configuration (if needed)
+gpu:
+  enabled: false
+  type: "nvidia"
+  count: 1
+  nvidiaDriverCapabilities: "compute,utility"
+  runtimeClassName: ""
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# Node selector to deploy on specific node
+nodeSelector:
+  kubernetes.io/hostname: "k8s-worker-1"
+
+tolerations: []
+
+affinity: {}
+
+# Persistent storage with Longhorn and Retain policy
+persistence:
+  enabled: false
+  existingClaim: ""
+  storageClass: "longhorn-retain"
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  mountPath: "/data"
+  reclaimPolicy: "Retain"
+  annotations:
+    longhorn.io/allow-volume-creation-with-degraded-availability: "true"
+
+# Init containers (useful for permission fixes, data initialization, etc.)
+initContainers: []
+  # - name: data-permission-fix
+  #   image: busybox:1.35
+  #   command: ["/bin/sh"]
+  #   args:
+  #     - -c
+  #     - |
+  #       chown -R 1000:2000 /data
+  #       chmod -R 755 /data
+  #   securityContext:
+  #     runAsUser: 0
+  #   volumeMounts:
+  #     - name: data
+  #       mountPath: /data
+
+# Secret configuration
+# If you want to use an existing secret, set existingSecret to the secret name
+# and the chart will not create a new secret
+existingSecret: ""
+secrets: {}
+  # Example secret values (will be base64 encoded automatically)
+  # API_KEY: "my-secret-api-key"
+  # DATABASE_PASSWORD: "super-secret-password"
+
+# Environment variables
+env: []
+  # - name: LOG_LEVEL
+  #   value: "info"
+  # - name: DATABASE_URL
+  #   value: "postgresql://user:pass@host:5432/db"
+
+# Environment variables from secrets/configmaps
+envFrom: []
+  # - secretRef:
+  #     name: my-secret
+  # - configMapRef:
+  #     name: my-configmap
+
+# Probes
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Startup probe (useful for slow-starting applications)
+startupProbe:
+  enabled: false
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+
+# Additional containers (sidecars)
+additionalContainers: []
+  # - name: sidecar
+  #   image: sidecar:latest
+  #   ports:
+  #     - containerPort: 9090
+
+# Additional volumes
+additionalVolumes: []
+  # - name: config
+  #   configMap:
+  #     name: my-config
+
+# Additional volume mounts
+additionalVolumeMounts: []
+  # - name: config
+  #   mountPath: /etc/config
+
+# ConfigMap data
+configMap:
+  enabled: false
+  data: {}
+    # config.yaml: |
+    #   key: value
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# Network policies
+networkPolicy:
+  enabled: false
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress: []
+
+# Service monitor for Prometheus
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  path: /metrics
+  labels: {}
+
+# Tests
+tests:
+  enabled: true
+  image: curlimages/curl:latest 

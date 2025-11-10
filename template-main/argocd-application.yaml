@@ -1,0 +1,145 @@
+# ArgoCD Application Template
+# This template should be customized for each application deployment
+# Replace the placeholder values with your actual application configuration
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-app  # CHANGE THIS: Your application name
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://gitlab.com/your-username/your-repo.git  # CHANGE THIS: Your GitLab repository URL
+    targetRevision: HEAD
+    path: .  # CHANGE THIS: Path to your Helm chart (e.g., helm-charts/my-app)
+    helm:
+      valueFiles:
+        - values.yaml
+      # Override values for your specific deployment
+      values: |
+        app:
+          name: "my-app"  # CHANGE THIS: Your application name
+          description: "My Kubernetes application"  # CHANGE THIS: Your app description
+          version: "latest"  # CHANGE THIS: Your application version
+          homepage: "https://example.com"  # CHANGE THIS: Your app homepage
+          sourceUrl: "https://github.com/example/my-app"  # CHANGE THIS: Your app source URL
+          maintainer:
+            name: "DevOps Team"  # CHANGE THIS: Maintainer name
+            email: "devops@example.com"  # CHANGE THIS: Maintainer email
+        
+        image:
+          repository: "nginx"  # CHANGE THIS: Your application image
+          tag: "latest"  # CHANGE THIS: Your image tag
+        
+        namespace:
+          name: "my-app"  # CHANGE THIS: Your target namespace
+        
+        # Istio configuration
+        istio:
+          enabled: true
+          sidecarInjection: true
+          manualSidecar:
+            enabled: true
+            tag: "1.27.0"  # CHANGE THIS: Match your Istio version
+          gateway:
+            enabled: true
+            name: "my-app-gateway"  # CHANGE THIS: Your gateway name
+            namespace: "istio-system"
+            hosts:
+              - "myapp.19980219.xyz"  # CHANGE THIS: Your domain
+          virtualService:
+            enabled: true
+          destinationRule:
+            enabled: true
+            tlsMode: "ISTIO_MUTUAL"
+          serviceMesh:
+            enabled: true
+            mtls:
+              enabled: true
+              mode: STRICT
+          jwt:
+            enabled: false  # Enable if you need JWT authentication
+          peerAuth:
+            enabled: true
+            mode: STRICT
+        
+        # Cert-manager configuration
+        certManager:
+          enabled: true
+          issuer: "letsencrypt-prod"  # CHANGE THIS: Your cluster issuer name
+          secretName: "my-app-tls-cert"  # CHANGE THIS: Your TLS secret name
+        
+        service:
+          type: ClusterIP
+          port: 80
+          targetPort: 8080  # CHANGE THIS: Your application port
+        
+        # Resource configuration
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+        
+        # Node selector
+        nodeSelector:
+          kubernetes.io/hostname: "k8s-worker-1"  # CHANGE THIS: Your target node
+        
+        # Persistent storage (if needed)
+        persistence:
+          enabled: false  # CHANGE THIS: Set to true if you need storage
+          storageClass: "longhorn-retain"
+          size: 10Gi
+          mountPath: "/data"  # CHANGE THIS: Your data path
+        
+        # Environment variables (customize as needed)
+        env: []
+          # - name: LOG_LEVEL
+          #   value: "info"
+          # - name: DATABASE_URL
+          #   value: "postgresql://user:pass@host:5432/db"
+        
+        # Secrets (customize as needed)
+        secrets: {}
+          # API_KEY: "your-secret-api-key"
+          # DATABASE_PASSWORD: "super-secret-password"
+        
+        # Health checks (customize as needed)
+        livenessProbe:
+          httpGet:
+            path: /healthz  # CHANGE THIS: Your health check path
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        
+        readinessProbe:
+          httpGet:
+            path: /healthz  # CHANGE THIS: Your health check path
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: my-app  # CHANGE THIS: Your target namespace
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m 

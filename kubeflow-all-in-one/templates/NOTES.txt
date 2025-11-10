@@ -1,0 +1,137 @@
+================================================================================
+  Kubeflow {{ .Chart.AppVersion }} has been deployed!
+================================================================================
+
+Your Kubeflow installation is being deployed. It may take several minutes for
+all components to be ready.
+
+IMPORTANT SECURITY NOTICE:
+==========================
+The default credentials are:
+  Email: {{ .Values.auth.defaultUser.email }}
+  Password: 12341234
+
+⚠️  CHANGE THE DEFAULT PASSWORD BEFORE PRODUCTION USE! ⚠️
+
+See the README.md for instructions on changing the password.
+
+
+ACCESS KUBEFLOW:
+===============
+
+1. Port Forward (Development/Testing):
+   
+   kubectl port-forward svc/istio-ingressgateway -n {{ include "kubeflow.istioNamespace" . }} 8080:80
+   
+   Then open: http://localhost:8080
+
+2. Production Access:
+   
+   {{- if .Values.global.domain }}
+   Your Kubeflow domain: https://{{ .Values.global.domain }}
+   {{- else }}
+   Configure your domain in values.yaml and update DNS to point to:
+   {{- end }}
+   
+   kubectl get svc istio-ingressgateway -n {{ include "kubeflow.istioNamespace" . }}
+
+
+VERIFY DEPLOYMENT:
+==================
+
+Check pod status:
+  kubectl get pods -n {{ include "kubeflow.namespace" . }}
+  kubectl get pods -n {{ include "kubeflow.authNamespace" . }}
+  kubectl get pods -n {{ include "kubeflow.oauth2ProxyNamespace" . }}
+  {{- if .Values.knative.enabled }}
+  kubectl get pods -n {{ include "kubeflow.knativeNamespace" . }}
+  {{- end }}
+
+Check for issues:
+  kubectl get pods -A | grep -v Running | grep -v Completed
+
+
+COMPONENTS DEPLOYED:
+====================
+
+{{- if .Values.auth.enabled }}
+✓ Authentication (Dex + OAuth2-Proxy)
+{{- end }}
+{{- if .Values.centralDashboard.enabled }}
+✓ Central Dashboard
+{{- end }}
+{{- if .Values.profiles.enabled }}
+✓ Profiles & KFAM
+{{- end }}
+{{- if .Values.jupyter.enabled }}
+✓ Jupyter Notebooks
+{{- end }}
+{{- if .Values.pipelines.enabled }}
+✓ Kubeflow Pipelines
+{{- end }}
+{{- if .Values.katib.enabled }}
+✓ Katib (Hyperparameter Tuning)
+{{- end }}
+{{- if .Values.kserve.enabled }}
+✓ KServe (Model Serving)
+{{- end }}
+{{- if .Values.trainer.enabled }}
+✓ Training Operator
+{{- end }}
+{{- if .Values.tensorboard.enabled }}
+✓ Tensorboard
+{{- end }}
+{{- if .Values.volumesWebApp.enabled }}
+✓ Volumes Web App
+{{- end }}
+{{- if .Values.sparkOperator.enabled }}
+✓ Spark Operator
+{{- end }}
+
+
+NEXT STEPS:
+===========
+
+1. Change the default password (see README.md)
+2. Configure your identity provider (optional)
+3. Create user profiles for your team
+4. Set up monitoring and backups
+5. Review and adjust resource limits
+
+
+DOCUMENTATION:
+==============
+
+README.md         - Installation and access guide
+CUSTOMIZATION.md  - Customization options
+values.yaml       - Configuration reference
+
+Online docs: https://www.kubeflow.org/docs/
+
+
+TROUBLESHOOTING:
+================
+
+If pods are not starting:
+  kubectl describe pod <pod-name> -n <namespace>
+  kubectl logs <pod-name> -n <namespace>
+
+For authentication issues:
+  kubectl logs -n {{ include "kubeflow.authNamespace" . }} deployment/dex
+  kubectl logs -n {{ include "kubeflow.oauth2ProxyNamespace" . }} deployment/oauth2-proxy
+
+For more help:
+  - Kubeflow Slack: https://app.slack.com/client/T08PSQ7BQ/C073W572LA2
+  - GitHub Issues: https://github.com/kubeflow/manifests/issues
+
+
+SUPPORT:
+========
+
+Community: https://www.kubeflow.org/docs/about/community/
+Slack: #kubeflow-platform on CNCF Slack
+
+================================================================================
+Happy ML Engineering! 🚀
+================================================================================
+

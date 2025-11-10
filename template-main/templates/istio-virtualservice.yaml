@@ -1,0 +1,68 @@
+{{- if and .Values.istio.enabled .Values.istio.virtualService.enabled }}
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: {{ include "template.virtualServiceName" . }}
+  namespace: {{ include "template.namespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    {{- include "template.labels" . | nindent 4 }}
+    app.kubernetes.io/component: virtualservice
+spec:
+  hosts:
+  {{- range .Values.istio.gateway.hosts }}
+  - {{ . }}
+  {{- end }}
+  gateways:
+  - {{ .Values.istio.gateway.namespace }}/{{ include "template.gatewayName" . }}
+  http:
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: {{ include "template.fullname" . }}
+        port:
+          number: {{ .Values.service.port }}
+    timeout: {{ .Values.istio.virtualService.timeout | default "30s" }}
+    {{- if .Values.istio.virtualService.retries }}
+    retries:
+      attempts: {{ .Values.istio.virtualService.retries.attempts | default 3 }}
+      perTryTimeout: {{ .Values.istio.virtualService.retries.perTryTimeout | default "10s" }}
+      retryOn: {{ .Values.istio.virtualService.retries.retryOn | default "gateway-error,connect-failure,refused-stream" }}
+    {{- end }}
+    {{- if .Values.istio.virtualService.headers }}
+    headers:
+      {{- if .Values.istio.virtualService.headers.request }}
+      request:
+        {{- if .Values.istio.virtualService.headers.request.set }}
+        set:
+          {{- toYaml .Values.istio.virtualService.headers.request.set | nindent 10 }}
+        {{- end }}
+        {{- if .Values.istio.virtualService.headers.request.add }}
+        add:
+          {{- toYaml .Values.istio.virtualService.headers.request.add | nindent 10 }}
+        {{- end }}
+        {{- if .Values.istio.virtualService.headers.request.remove }}
+        remove:
+          {{- toYaml .Values.istio.virtualService.headers.request.remove | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.istio.virtualService.headers.response }}
+      response:
+        {{- if .Values.istio.virtualService.headers.response.set }}
+        set:
+          {{- toYaml .Values.istio.virtualService.headers.response.set | nindent 10 }}
+        {{- end }}
+        {{- if .Values.istio.virtualService.headers.response.add }}
+        add:
+          {{- toYaml .Values.istio.virtualService.headers.response.add | nindent 10 }}
+        {{- end }}
+        {{- if .Values.istio.virtualService.headers.response.remove }}
+        remove:
+          {{- toYaml .Values.istio.virtualService.headers.response.remove | nindent 10 }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+{{- end }} 

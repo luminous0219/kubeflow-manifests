@@ -1,0 +1,49 @@
+{{- if and .Values.istio.enabled .Values.istio.jwt.enabled }}
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: {{ include "template.fullname" . }}-jwt
+  namespace: {{ include "template.namespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    {{- include "template.labels" . | nindent 4 }}
+    app.kubernetes.io/component: jwt-policy
+spec:
+  selector:
+    matchLabels:
+      {{- include "template.selectorLabels" . | nindent 6 }}
+  jwtRules:
+  - issuer: {{ .Values.istio.jwt.issuer }}
+    audiences:
+    {{- range .Values.istio.jwt.audiences }}
+    - {{ . }}
+    {{- end }}
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ include "template.fullname" . }}-authz
+  namespace: {{ include "template.namespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    {{- include "template.labels" . | nindent 4 }}
+    app.kubernetes.io/component: authz-policy
+spec:
+  selector:
+    matchLabels:
+      {{- include "template.selectorLabels" . | nindent 6 }}
+  rules:
+  - from:
+    - source:
+        requestPrincipals: ["{{ .Values.istio.jwt.issuer }}/*"]
+  {{- if .Values.istio.jwt.skipPaths }}
+  - to:
+    - operation:
+        paths:
+        {{- range .Values.istio.jwt.skipPaths }}
+        - {{ . }}
+        {{- end }}
+  {{- end }}
+{{- end }} 

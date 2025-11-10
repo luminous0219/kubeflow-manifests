@@ -1,0 +1,314 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "template.fullname" . }}
+  namespace: {{ include "template.namespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+  labels:
+    {{- include "template.labels" . | nindent 4 }}
+    app.kubernetes.io/component: deployment
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "template.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "template.selectorLabels" . | nindent 8 }}
+        {{- include "template.istioLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "template.serviceAccountName" . }}
+      {{- if .Values.gpu.runtimeClassName }}
+      runtimeClassName: {{ .Values.gpu.runtimeClassName }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.initContainers }}
+      initContainers:
+        {{- toYaml .Values.initContainers | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Values.app.name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Values.app.version }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+            {{- range .Values.service.additionalPorts }}
+            - name: {{ .name }}
+              containerPort: {{ .targetPort }}
+              protocol: TCP
+            {{- end }}
+          {{- if .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          {{- end }}
+          {{- if and .Values.startupProbe .Values.startupProbe.enabled }}
+          startupProbe:
+            {{- omit .Values.startupProbe "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- if .Values.gpu.enabled }}
+            limits:
+              {{- if eq .Values.gpu.type "nvidia" }}
+              nvidia.com/gpu: {{ .Values.gpu.count }}
+              {{- end }}
+              cpu: {{ .Values.resources.limits.cpu }}
+              memory: {{ .Values.resources.limits.memory }}
+            requests:
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}
+            {{- else }}
+            {{- toYaml .Values.resources | nindent 12 }}
+            {{- end }}
+          {{- if or .Values.env .Values.envFrom .Values.secrets .Values.existingSecret }}
+          env:
+            {{- range .Values.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+            {{- if or .Values.secrets .Values.existingSecret }}
+            {{- range $key, $value := .Values.secrets }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "template.secretName" $ }}
+                  key: {{ $key }}
+            {{- end }}
+            {{- end }}
+          {{- end }}
+          {{- if .Values.envFrom }}
+          envFrom:
+            {{- toYaml .Values.envFrom | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            {{- if .Values.persistence.enabled }}
+            - name: data
+              mountPath: {{ .Values.persistence.mountPath }}
+            {{- end }}
+            {{- if .Values.configMap.enabled }}
+            - name: config
+              mountPath: /etc/config
+            {{- end }}
+            {{- range .Values.additionalVolumeMounts }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+              {{- if .subPath }}
+              subPath: {{ .subPath }}
+              {{- end }}
+              {{- if .readOnly }}
+              readOnly: {{ .readOnly }}
+              {{- end }}
+            {{- end }}
+        {{- if and .Values.istio.enabled .Values.istio.manualSidecar.enabled }}
+        # Manual Istio sidecar (fallback for injection issues)
+        - name: istio-proxy
+          image: docker.io/istio/proxyv2:{{ .Values.istio.manualSidecar.tag }}
+          args:
+            - proxy
+            - sidecar
+            - --domain
+            - $(POD_NAMESPACE).svc.cluster.local
+            - --proxyLogLevel=warning
+            - --proxyComponentLogLevel=misc:error
+            - --log_output_level=default:info
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: INSTANCE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: PROXY_CONFIG
+              value: |
+                {}
+            - name: ISTIO_META_POD_PORTS
+              value: |-
+                [
+                  {"containerPort":{{ .Values.service.targetPort }},"protocol":"TCP"}
+                ]
+            - name: ISTIO_META_APP_CONTAINERS
+              value: {{ .Values.app.name }}
+            - name: ISTIO_META_CLUSTER_ID
+              value: "Kubernetes"
+            - name: ISTIO_META_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: ISTIO_META_INTERCEPTION_MODE
+              value: REDIRECT
+            - name: ISTIO_META_WORKLOAD_NAME
+              value: {{ include "template.fullname" . }}
+            - name: ISTIO_META_OWNER
+              value: kubernetes://apis/apps/v1/namespaces/{{ include "template.namespace" . }}/deployments/{{ include "template.fullname" . }}
+            - name: ISTIO_META_MESH_ID
+              value: cluster.local
+            - name: TRUST_DOMAIN
+              value: cluster.local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 15090
+              protocol: TCP
+              name: http-envoy-prom
+          readinessProbe:
+            failureThreshold: 4
+            httpGet:
+              path: /healthz/ready
+              port: 15021
+              scheme: HTTP
+            initialDelaySeconds: 11
+            periodSeconds: 2
+            successThreshold: 1
+            timeoutSeconds: 3
+          resources:
+            limits:
+              cpu: 2000m
+              memory: 1024Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsGroup: 1337
+            runAsNonRoot: true
+            runAsUser: 1337
+          volumeMounts:
+            - name: workload-socket
+              mountPath: /var/run/secrets/workload-spiffe-uds
+            - name: credential-socket
+              mountPath: /var/run/secrets/credential-uds
+            - name: workload-certs
+              mountPath: /var/run/secrets/workload-spiffe-credentials
+            - name: istio-envoy
+              mountPath: /etc/istio/proxy
+            - name: istio-data
+              mountPath: /var/lib/istio/data
+            - name: istio-podinfo
+              mountPath: /etc/istio/pod
+            - name: istio-token
+              mountPath: /var/run/secrets/tokens
+              readOnly: true
+            - name: istiod-ca-cert
+              mountPath: /var/run/secrets/istio
+              readOnly: true
+        {{- end }}
+        {{- if .Values.additionalContainers }}
+        {{- toYaml .Values.additionalContainers | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "template.pvcName" . }}
+        {{- end }}
+        {{- if .Values.configMap.enabled }}
+        - name: config
+          configMap:
+            name: {{ include "template.fullname" . }}-config
+        {{- end }}
+        {{- if and .Values.istio.enabled .Values.istio.manualSidecar.enabled }}
+        # Istio sidecar volumes
+        - name: workload-socket
+          emptyDir: {}
+        - name: credential-socket
+          emptyDir: {}
+        - name: workload-certs
+          emptyDir: {}
+        - name: istio-envoy
+          emptyDir: {}
+        - name: istio-data
+          emptyDir: {}
+        - name: istio-podinfo
+          downwardAPI:
+            items:
+              - path: "labels"
+                fieldRef:
+                  fieldPath: metadata.labels
+              - path: "annotations"
+                fieldRef:
+                  fieldPath: metadata.annotations
+        - name: istio-token
+          projected:
+            sources:
+            - serviceAccountToken:
+                path: istio-token
+                expirationSeconds: 43200
+                audience: istio-ca
+        - name: istiod-ca-cert
+          configMap:
+            name: istio-ca-root-cert
+        {{- end }}
+        {{- range .Values.additionalVolumes }}
+        - name: {{ .name }}
+          {{- if .configMap }}
+          configMap:
+            name: {{ .configMap.name }}
+            {{- if .configMap.items }}
+            items:
+              {{- toYaml .configMap.items | nindent 14 }}
+            {{- end }}
+          {{- else if .secret }}
+          secret:
+            secretName: {{ .secret.secretName }}
+            {{- if .secret.items }}
+            items:
+              {{- toYaml .secret.items | nindent 14 }}
+            {{- end }}
+          {{- else if .emptyDir }}
+          emptyDir: {{ toYaml .emptyDir | nindent 12 }}
+          {{- else if .hostPath }}
+          hostPath:
+            path: {{ .hostPath.path }}
+            type: {{ .hostPath.type | default "Directory" }}
+          {{- end }}
+        {{- end }} 

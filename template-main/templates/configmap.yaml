@@ -1,0 +1,14 @@
+{{- if .Values.configMap.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "template.fullname" . }}-config
+  namespace: {{ include "template.namespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    {{- include "template.labels" . | nindent 4 }}
+    app.kubernetes.io/component: configmap
+data:
+  {{- toYaml .Values.configMap.data | nindent 2 }}
+{{- end }} 

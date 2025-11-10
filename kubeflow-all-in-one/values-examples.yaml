@@ -1,0 +1,494 @@
+# Example Values Files for Different Kubeflow Deployment Scenarios
+
+# ============================================================================
+# Example 1: Minimal Installation (Development/Testing)
+# ============================================================================
+# Use this for small clusters or development environments
+# Uncomment and save as values-minimal.yaml
+
+# global:
+#   domain: "kubeflow-dev.example.com"
+#   storageClass: "longhorn"
+#   istioGatewayNamespace: "istio-system"
+#   istioGatewayName: "kubeflow-gateway"
+#   createIstioGateway: true
+#   certManagerIssuer: "letsencrypt-staging"
+#   tlsSecretName: "kubeflow-tls-cert"
+# 
+# namespace:
+#   create: true
+#   name: "kubeflow"
+# 
+# auth:
+#   enabled: true
+#   oauth2Proxy:
+#     enabled: true
+#     m2mMode: "m2m-dex-only"
+#   dex:
+#     enabled: true
+# 
+# knative:
+#   enabled: false  # Disable if not using KServe
+# 
+# centralDashboard:
+#   enabled: true
+# 
+# profiles:
+#   enabled: true
+# 
+# jupyter:
+#   enabled: true
+#   notebookController:
+#     enabled: true
+#   jupyterWebApp:
+#     enabled: true
+# 
+# pipelines:
+#   enabled: false  # Disable for minimal setup
+# 
+# katib:
+#   enabled: false  # Disable for minimal setup
+# 
+# kserve:
+#   enabled: false  # Disable for minimal setup
+# 
+# trainer:
+#   enabled: false  # Disable for minimal setup
+# 
+# volumesWebApp:
+#   enabled: true
+# 
+# tensorboard:
+#   enabled: false  # Disable for minimal setup
+# 
+# sparkOperator:
+#   enabled: false  # Disable for minimal setup
+
+# ============================================================================
+# Example 2: ML Training Focus
+# ============================================================================
+# Optimized for model training and experimentation
+# Save as values-training.yaml
+
+# global:
+#   domain: "ml-training.example.com"
+#   storageClass: "longhorn-retain"  # Use retain policy for training data
+# 
+# jupyter:
+#   enabled: true
+#   notebookController:
+#     enabled: true
+#     resources:
+#       requests:
+#         cpu: 200m
+#         memory: 512Mi
+#       limits:
+#         cpu: 1000m
+#         memory: 2Gi
+#   jupyterWebApp:
+#     enabled: true
+# 
+# katib:
+#   enabled: true
+#   storageSize: "20Gi"  # Larger storage for experiments
+#   controller:
+#     resources:
+#       requests:
+#         cpu: 200m
+#         memory: 512Mi
+#       limits:
+#         cpu: 1000m
+#         memory: 2Gi
+# 
+# trainer:
+#   enabled: true
+#   resources:
+#     requests:
+#       cpu: 200m
+#       memory: 512Mi
+#     limits:
+#       cpu: 1000m
+#       memory: 2Gi
+# 
+# tensorboard:
+#   enabled: true
+#   controller:
+#     enabled: true
+#   webApp:
+#     enabled: true
+# 
+# pipelines:
+#   enabled: true
+#   storageBackend: "seaweedfs"
+#   definitionsStorage: "database"
+# 
+# kserve:
+#   enabled: false  # Not needed for training focus
+# 
+# sparkOperator:
+#   enabled: true  # For big data preprocessing
+
+# ============================================================================
+# Example 3: ML Serving Focus
+# ============================================================================
+# Optimized for model serving and inference
+# Save as values-serving.yaml
+
+# global:
+#   domain: "ml-serving.example.com"
+#   storageClass: "longhorn"
+# 
+# knative:
+#   enabled: true
+#   serving:
+#     enabled: true
+#   eventing:
+#     enabled: true  # For request logging
+# 
+# kserve:
+#   enabled: true
+#   controller:
+#     resources:
+#       requests:
+#         cpu: 200m
+#         memory: 512Mi
+#       limits:
+#         cpu: 2000m
+#         memory: 4Gi
+#   modelsWebApp:
+#     enabled: true
+# 
+# modelRegistry:
+#   enabled: true  # Enable for model versioning
+#   storageSize: "30Gi"
+# 
+# pipelines:
+#   enabled: true  # For inference pipelines
+#   storageBackend: "seaweedfs"
+# 
+# jupyter:
+#   enabled: true  # For model debugging
+# 
+# katib:
+#   enabled: false  # Not needed for serving
+# 
+# trainer:
+#   enabled: false  # Not needed for serving
+
+# ============================================================================
+# Example 4: Production Deployment
+# ============================================================================
+# Full-featured production setup with high availability
+# Save as values-production.yaml
+
+# global:
+#   domain: "kubeflow.company.com"
+#   storageClass: "longhorn-retain"
+#   certManagerIssuer: "letsencrypt-prod"
+# 
+# auth:
+#   enabled: true
+#   defaultUser:
+#     email: "admin@company.com"
+#     username: "admin"
+#     passwordHash: "YOUR_BCRYPT_HASH_HERE"
+#   oauth2Proxy:
+#     enabled: true
+#     m2mMode: "m2m-dex-only"
+#   dex:
+#     enabled: true
+#     connectors:
+#     - type: oidc
+#       id: azure
+#       name: Azure AD
+#       config:
+#         issuer: https://login.microsoftonline.com/TENANT_ID/v2.0
+#         clientID: CLIENT_ID
+#         clientSecret: CLIENT_SECRET
+#         redirectURI: https://kubeflow.company.com/dex/callback
+#         scopes:
+#           - openid
+#           - profile
+#           - email
+# 
+# # Enable all components
+# centralDashboard:
+#   enabled: true
+#   resources:
+#     requests:
+#       cpu: 200m
+#       memory: 512Mi
+#     limits:
+#       cpu: 1000m
+#       memory: 1Gi
+# 
+# profiles:
+#   enabled: true
+#   podSecurityStandards: true
+# 
+# jupyter:
+#   enabled: true
+#   notebookController:
+#     enabled: true
+#     resources:
+#       requests:
+#         cpu: 200m
+#         memory: 512Mi
+#       limits:
+#         cpu: 1000m
+#         memory: 2Gi
+#   jupyterWebApp:
+#     enabled: true
+# 
+# pipelines:
+#   enabled: true
+#   storageBackend: "seaweedfs"
+#   definitionsStorage: "database"
+#   database:
+#     type: "mysql"
+#     storageSize: "50Gi"  # Larger for production
+#   seaweedfs:
+#     enabled: true
+#     storageSize: "100Gi"  # Larger for artifacts
+#   resources:
+#     apiServer:
+#       requests:
+#         cpu: 500m
+#         memory: 1Gi
+#       limits:
+#         cpu: 2000m
+#         memory: 4Gi
+# 
+# katib:
+#   enabled: true
+#   storageSize: "20Gi"
+#   controller:
+#     resources:
+#       requests:
+#         cpu: 200m
+#         memory: 512Mi
+#       limits:
+#         cpu: 1000m
+#         memory: 2Gi
+# 
+# kserve:
+#   enabled: true
+#   modelsWebApp:
+#     enabled: true
+# 
+# trainer:
+#   enabled: true
+# 
+# tensorboard:
+#   enabled: true
+#   controller:
+#     enabled: true
+#   webApp:
+#     enabled: true
+# 
+# volumesWebApp:
+#   enabled: true
+# 
+# sparkOperator:
+#   enabled: true
+# 
+# modelRegistry:
+#   enabled: true
+#   storageSize: "30Gi"
+# 
+# # Network policies for security
+# networkPolicies:
+#   enabled: true
+# 
+# # ArgoCD sync waves
+# argocd:
+#   enabled: true
+# 
+# # Node selector for production nodes
+# nodeSelector:
+#   node-role.kubernetes.io/worker: "true"
+#   workload-type: "ml"
+
+# ============================================================================
+# Example 5: AWS EKS Deployment
+# ============================================================================
+# Optimized for AWS EKS with IAM authentication
+# Save as values-eks.yaml
+
+# global:
+#   domain: "kubeflow.example.com"
+#   storageClass: "gp3"  # Use EBS gp3 storage class
+#   certManagerIssuer: "letsencrypt-prod"
+# 
+# auth:
+#   enabled: true
+#   oauth2Proxy:
+#     enabled: true
+#     m2mMode: "m2m-dex-and-eks"  # EKS-specific mode
+#     awsRegion: "us-west-2"
+#     clusterName: "my-eks-cluster"
+#   dex:
+#     enabled: true
+# 
+# # All other components as needed
+# centralDashboard:
+#   enabled: true
+# 
+# profiles:
+#   enabled: true
+# 
+# jupyter:
+#   enabled: true
+# 
+# pipelines:
+#   enabled: true
+#   storageBackend: "seaweedfs"
+# 
+# katib:
+#   enabled: true
+# 
+# kserve:
+#   enabled: true
+# 
+# trainer:
+#   enabled: true
+
+# ============================================================================
+# Example 6: Google GKE Deployment
+# ============================================================================
+# Optimized for Google Kubernetes Engine
+# Save as values-gke.yaml
+
+# global:
+#   domain: "kubeflow.example.com"
+#   storageClass: "standard-rwo"  # GKE standard storage
+#   certManagerIssuer: "letsencrypt-prod"
+# 
+# auth:
+#   enabled: true
+#   oauth2Proxy:
+#     enabled: true
+#     m2mMode: "m2m-dex-and-kind"  # Works on GKE
+#   dex:
+#     enabled: true
+#     connectors:
+#     - type: oidc
+#       id: google
+#       name: Google
+#       config:
+#         issuer: https://accounts.google.com
+#         clientID: YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com
+#         clientSecret: YOUR_GOOGLE_CLIENT_SECRET
+#         redirectURI: https://kubeflow.example.com/dex/callback
+#         scopes:
+#           - openid
+#           - profile
+#           - email
+# 
+# # Enable components as needed
+# centralDashboard:
+#   enabled: true
+# 
+# profiles:
+#   enabled: true
+# 
+# jupyter:
+#   enabled: true
+# 
+# pipelines:
+#   enabled: true
+# 
+# katib:
+#   enabled: true
+# 
+# kserve:
+#   enabled: true
+
+# ============================================================================
+# Example 7: On-Premises / Bare Metal
+# ============================================================================
+# For on-premises deployments with Longhorn
+# Save as values-onprem.yaml
+
+# global:
+#   domain: "kubeflow.internal.company.com"
+#   storageClass: "longhorn-retain"
+#   certManagerIssuer: "ca-issuer"  # Use internal CA
+# 
+# auth:
+#   enabled: true
+#   oauth2Proxy:
+#     enabled: true
+#     m2mMode: "m2m-dex-only"
+#   dex:
+#     enabled: true
+#     connectors:
+#     - type: ldap
+#       id: ldap
+#       name: LDAP
+#       config:
+#         host: ldap.company.com:636
+#         insecureNoSSL: false
+#         bindDN: cn=admin,dc=company,dc=com
+#         bindPW: password
+#         userSearch:
+#           baseDN: ou=users,dc=company,dc=com
+#           filter: "(objectClass=person)"
+#           username: uid
+#           idAttr: uid
+#           emailAttr: mail
+#           nameAttr: cn
+# 
+# # Enable all components
+# centralDashboard:
+#   enabled: true
+# 
+# profiles:
+#   enabled: true
+# 
+# jupyter:
+#   enabled: true
+# 
+# pipelines:
+#   enabled: true
+#   storageBackend: "seaweedfs"
+# 
+# katib:
+#   enabled: true
+# 
+# kserve:
+#   enabled: true
+# 
+# trainer:
+#   enabled: true
+# 
+# tensorboard:
+#   enabled: true
+# 
+# sparkOperator:
+#   enabled: true
+# 
+# # Node selector for specific hardware
+# nodeSelector:
+#   kubernetes.io/hostname: "ml-node-1"
+
+# ============================================================================
+# How to Use These Examples
+# ============================================================================
+# 
+# 1. Copy the example you want to a new file:
+#    cp values-examples.yaml values-production.yaml
+# 
+# 2. Uncomment the relevant section
+# 
+# 3. Customize the values for your environment
+# 
+# 4. Deploy with Helm:
+#    helm install kubeflow . -f values-production.yaml
+# 
+# 5. Or use with Kustomize by creating a values patch:
+#    Create a kustomization.yaml that patches the values
+# 
+# 6. Or use with ArgoCD:
+#    Reference the values file in your Application manifest
+

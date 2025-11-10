@@ -1,0 +1,136 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# This kustomization file deploys all Kubeflow components
+# It assumes cert-manager, Istio, and Longhorn are already installed
+
+sortOptions:
+  order: legacy
+  legacySortOptions:
+    orderFirst:
+    - Namespace
+    - ResourceQuota
+    - StorageClass
+    - CustomResourceDefinition
+    - MutatingWebhookConfiguration
+    - ServiceAccount
+    - PodSecurityPolicy
+    - NetworkPolicy
+    - Role
+    - ClusterRole
+    - RoleBinding
+    - ClusterRoleBinding
+    - ConfigMap
+    - Secret
+    - Endpoints
+    - Service
+    - LimitRange
+    - PriorityClass
+    - PersistentVolume
+    - PersistentVolumeClaim
+    - Deployment
+    - StatefulSet
+    - CronJob
+    - PodDisruptionBudget
+    orderLast:
+    - ValidatingWebhookConfiguration
+
+resources:
+# OAuth2-Proxy (choose ONE of the following based on your cluster)
+- ../common/oauth2-proxy/overlays/m2m-dex-only     # for most clusters
+# - ../common/oauth2-proxy/overlays/m2m-dex-and-kind # for KIND/K3D/Rancher/GKE (allows K8S JWTs)
+# - ../common/oauth2-proxy/overlays/m2m-dex-and-eks  # for EKS (configure issuer first)
+
+# Dex
+- ../common/dex/overlays/oauth2-proxy
+
+# Knative Serving (required for KServe)
+- ../common/knative/knative-serving/overlays/gateways
+- ../common/istio/cluster-local-gateway/base
+
+# Uncomment if you need Knative Eventing
+# - ../common/knative/knative-eventing/base
+
+# Kubeflow namespace
+- ../common/kubeflow-namespace/base
+
+# Network Policies
+- ../common/networkpolicies/base
+
+# Kubeflow Roles
+- ../common/kubeflow-roles/base
+
+# Kubeflow Istio Resources
+- ../common/istio/kubeflow-istio-resources/base
+
+# Kubeflow Pipelines with SeaweedFS (default S3-compatible storage)
+- ../experimental/seaweedfs/istio
+# Choose ONE pipeline storage mode:
+# Option 1: Pipeline definitions in database (default)
+# - ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user
+# Option 2: Pipeline definitions as Kubernetes resources
+# - ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user-k8s-native
+
+# Katib (Hyperparameter Tuning)
+- ../applications/katib/upstream/installs/katib-with-kubeflow
+
+# Central Dashboard
+- ../applications/centraldashboard/overlays/oauth2-proxy
+
+# Admission Webhook (PodDefaults)
+- ../applications/admission-webhook/upstream/overlays/cert-manager
+
+# Jupyter Web App
+- ../applications/jupyter/jupyter-web-app/upstream/overlays/istio
+
+# Notebook Controller
+- ../applications/jupyter/notebook-controller/upstream/overlays/kubeflow
+
+# Profiles + KFAM with Pod Security Standards
+- ../applications/profiles/pss
+
+# PVC Viewer Controller
+- ../applications/pvcviewer-controller/upstream/base
+
+# Volumes Web App
+- ../applications/volumes-web-app/upstream/overlays/istio
+
+# Tensorboard Controller
+- ../applications/tensorboard/tensorboard-controller/upstream/overlays/kubeflow
+
+# Tensorboards Web App
+- ../applications/tensorboard/tensorboards-web-app/upstream/overlays/istio
+
+# Trainer (Training Operator v2)
+- ../applications/trainer/overlays
+
+# KServe (Model Serving)
+- ../applications/kserve/kserve
+- ../applications/kserve/models-web-app/overlays/kubeflow
+
+# Spark Operator
+- ../applications/spark/spark-operator/overlays/kubeflow
+
+# User namespace (default user)
+- ../common/user-namespace/base
+
+# Optional: Model Registry (uncomment if needed)
+# - ../applications/model-registry/upstream/overlays/db
+
+components:
+# Pod Security Standards - baseline for dynamic namespaces
+- ../common/security/PSS/dynamic/baseline
+
+# Uncomment to add patches for custom domain, user, etc.
+# patches:
+# - target:
+#     kind: Gateway
+#     name: kubeflow-gateway
+#   patch: |-
+#     - op: replace
+#       path: /spec/servers/0/hosts/0
+#       value: kubeflow.yourdomain.com
+#     - op: replace
+#       path: /spec/servers/1/hosts/0
+#       value: kubeflow.yourdomain.com
+

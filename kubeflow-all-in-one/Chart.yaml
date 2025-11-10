@@ -1,0 +1,24 @@
+apiVersion: v2
+name: kubeflow-all-in-one
+description: All-in-one Helm chart for deploying Kubeflow on Kubernetes with existing Istio, cert-manager, and Longhorn
+type: application
+version: 1.10.0
+appVersion: "1.10.0"
+home: https://www.kubeflow.org
+sources:
+  - https://github.com/kubeflow/manifests
+keywords:
+  - kubeflow
+  - machine-learning
+  - ml
+  - ai
+  - mlops
+  - pipelines
+  - jupyter
+  - katib
+  - kserve
+maintainers:
+  - name: Kubeflow Community
+    email: kubeflow-discuss@googlegroups.com
+icon: https://www.kubeflow.org/images/logo.svg
+

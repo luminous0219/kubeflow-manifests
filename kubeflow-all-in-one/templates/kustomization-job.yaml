@@ -1,0 +1,267 @@
+{{- if .Values.namespace.create }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubeflow-installer
+  namespace: {{ include "kubeflow.namespace" . }}
+  labels:
+    {{- include "kubeflow.labels" . | nindent 4 }}
+  annotations:
+    {{- include "kubeflow.annotations" . | nindent 4 }}
+    {{- if .Values.argocd.enabled }}
+    argocd.argoproj.io/sync-wave: "2"
+    {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubeflow-installer
+  labels:
+    {{- include "kubeflow.labels" . | nindent 4 }}
+  annotations:
+    {{- include "kubeflow.annotations" . | nindent 4 }}
+    {{- if .Values.argocd.enabled }}
+    argocd.argoproj.io/sync-wave: "2"
+    {{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: kubeflow-installer
+  namespace: {{ include "kubeflow.namespace" . }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubeflow-kustomization
+  namespace: {{ include "kubeflow.namespace" . }}
+  labels:
+    {{- include "kubeflow.labels" . | nindent 4 }}
+  annotations:
+    {{- include "kubeflow.annotations" . | nindent 4 }}
+    {{- if .Values.argocd.enabled }}
+    argocd.argoproj.io/sync-wave: "2"
+    {{- end }}
+data:
+  kustomization.yaml: |
+    apiVersion: kustomize.config.k8s.io/v1beta1
+    kind: Kustomization
+
+    sortOptions:
+      order: legacy
+      legacySortOptions:
+        orderFirst:
+        - Namespace
+        - ResourceQuota
+        - StorageClass
+        - CustomResourceDefinition
+        - MutatingWebhookConfiguration
+        - ServiceAccount
+        - PodSecurityPolicy
+        - NetworkPolicy
+        - Role
+        - ClusterRole
+        - RoleBinding
+        - ClusterRoleBinding
+        - ConfigMap
+        - Secret
+        - Endpoints
+        - Service
+        - LimitRange
+        - PriorityClass
+        - PersistentVolume
+        - PersistentVolumeClaim
+        - Deployment
+        - StatefulSet
+        - CronJob
+        - PodDisruptionBudget
+        orderLast:
+        - ValidatingWebhookConfiguration
+
+    resources:
+    {{- if .Values.auth.oauth2Proxy.enabled }}
+    # OAuth2-Proxy
+    - ../common/oauth2-proxy/overlays/{{ .Values.auth.oauth2Proxy.m2mMode }}
+    {{- end }}
+    {{- if .Values.auth.dex.enabled }}
+    # Dex
+    - ../common/dex/overlays/oauth2-proxy
+    {{- end }}
+    {{- if .Values.knative.enabled }}
+    # Knative
+    {{- if .Values.knative.serving.enabled }}
+    - ../common/knative/knative-serving/overlays/gateways
+    - ../common/istio/cluster-local-gateway/base
+    {{- end }}
+    {{- if .Values.knative.eventing.enabled }}
+    - ../common/knative/knative-eventing/base
+    {{- end }}
+    {{- end }}
+    # Kubeflow namespace
+    - ../common/kubeflow-namespace/base
+    {{- if .Values.networkPolicies.enabled }}
+    # Network Policies
+    - ../common/networkpolicies/base
+    {{- end }}
+    # Kubeflow Roles
+    - ../common/kubeflow-roles/base
+    # Kubeflow Istio Resources
+    - ../common/istio/kubeflow-istio-resources/base
+    {{- if .Values.pipelines.enabled }}
+    # Kubeflow Pipelines
+    {{- if eq .Values.pipelines.storageBackend "seaweedfs" }}
+    - ../experimental/seaweedfs/istio
+    {{- end }}
+    {{- if eq .Values.pipelines.definitionsStorage "database" }}
+    - ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user
+    {{- else if eq .Values.pipelines.definitionsStorage "k8s-native" }}
+    - ../applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user-k8s-native
+    {{- end }}
+    {{- end }}
+    {{- if .Values.katib.enabled }}
+    # Katib
+    - ../applications/katib/upstream/installs/katib-with-kubeflow
+    {{- end }}
+    {{- if .Values.centralDashboard.enabled }}
+    # Central Dashboard
+    - ../applications/centraldashboard/overlays/oauth2-proxy
+    {{- end }}
+    {{- if .Values.admissionWebhook.enabled }}
+    # Admission Webhook
+    - ../applications/admission-webhook/upstream/overlays/cert-manager
+    {{- end }}
+    {{- if .Values.jupyter.enabled }}
+    {{- if .Values.jupyter.jupyterWebApp.enabled }}
+    # Jupyter Web App
+    - ../applications/jupyter/jupyter-web-app/upstream/overlays/istio
+    {{- end }}
+    {{- if .Values.jupyter.notebookController.enabled }}
+    # Notebook Controller
+    - ../applications/jupyter/notebook-controller/upstream/overlays/kubeflow
+    {{- end }}
+    {{- end }}
+    {{- if .Values.profiles.enabled }}
+    # Profiles + KFAM
+    {{- if .Values.profiles.podSecurityStandards }}
+    - ../applications/profiles/pss
+    {{- else }}
+    - ../applications/profiles/upstream/overlays/kubeflow
+    {{- end }}
+    {{- end }}
+    {{- if .Values.pvcViewerController.enabled }}
+    # PVC Viewer Controller
+    - ../applications/pvcviewer-controller/upstream/base
+    {{- end }}
+    {{- if .Values.volumesWebApp.enabled }}
+    # Volumes Web App
+    - ../applications/volumes-web-app/upstream/overlays/istio
+    {{- end }}
+    {{- if .Values.tensorboard.enabled }}
+    {{- if .Values.tensorboard.controller.enabled }}
+    # Tensorboard Controller
+    - ../applications/tensorboard/tensorboard-controller/upstream/overlays/kubeflow
+    {{- end }}
+    {{- if .Values.tensorboard.webApp.enabled }}
+    # Tensorboards Web App
+    - ../applications/tensorboard/tensorboards-web-app/upstream/overlays/istio
+    {{- end }}
+    {{- end }}
+    {{- if .Values.trainer.enabled }}
+    # Trainer (Training Operator v2)
+    - ../applications/trainer/overlays
+    {{- end }}
+    {{- if .Values.kserve.enabled }}
+    # KServe
+    - ../applications/kserve/kserve
+    {{- if .Values.kserve.modelsWebApp.enabled }}
+    - ../applications/kserve/models-web-app/overlays/kubeflow
+    {{- end }}
+    {{- end }}
+    {{- if .Values.sparkOperator.enabled }}
+    # Spark Operator
+    - ../applications/spark/spark-operator/overlays/kubeflow
+    {{- end }}
+    {{- if .Values.modelRegistry.enabled }}
+    # Model Registry
+    - ../applications/model-registry/upstream/overlays/db
+    {{- end }}
+    {{- if .Values.userNamespace.create }}
+    # User namespace
+    - ../common/user-namespace/base
+    {{- end }}
+
+    {{- if .Values.profiles.podSecurityStandards }}
+    components:
+    # Pod Security Standards
+    - ../common/security/PSS/dynamic/baseline
+    {{- end }}
+
+    {{- if or .Values.global.domain .Values.auth.defaultUser.email .Values.userNamespace.owner }}
+    patches:
+    {{- if .Values.global.domain }}
+    # Patch Istio Gateway hosts
+    - target:
+        kind: Gateway
+        name: kubeflow-gateway
+      patch: |-
+        - op: replace
+          path: /spec/servers/0/hosts/0
+          value: {{ .Values.global.domain }}
+        - op: replace
+          path: /spec/servers/1/hosts/0
+          value: {{ .Values.global.domain }}
+    {{- end }}
+    {{- if .Values.auth.defaultUser.email }}
+    # Patch Dex static user email
+    - target:
+        kind: ConfigMap
+        name: dex
+        namespace: auth
+      patch: |-
+        - op: replace
+          path: /data/config.yaml
+          value: |
+            issuer: https://{{ .Values.global.domain }}/dex
+            storage:
+              type: kubernetes
+              config:
+                inCluster: true
+            web:
+              http: 0.0.0.0:5556
+            logger:
+              level: "debug"
+              format: text
+            oauth2:
+              skipApprovalScreen: true
+            enablePasswordDB: true
+            staticPasswords:
+            - email: {{ .Values.auth.defaultUser.email }}
+              hashFromEnv: DEX_USER_PASSWORD
+              username: {{ .Values.auth.defaultUser.username }}
+              userID: "15841185641784"
+            staticClients:
+            - idEnv: OIDC_CLIENT_ID
+              redirectURIs: ["/oauth2/callback"]
+              name: 'Dex Login Application'
+              secretEnv: OIDC_CLIENT_SECRET
+            {{- if .Values.auth.dex.connectors }}
+            connectors:
+            {{- toYaml .Values.auth.dex.connectors | nindent 12 }}
+            {{- end }}
+    {{- end }}
+    {{- if .Values.userNamespace.owner }}
+    # Patch user namespace owner
+    - target:
+        kind: Profile
+        name: kubeflow-user-example-com
+      patch: |-
+        - op: replace
+          path: /spec/owner/name
+          value: {{ .Values.userNamespace.owner }}
+    {{- end }}
+    {{- end }}
+{{- end }}
+
